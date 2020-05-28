@@ -1,4 +1,4 @@
-package main
+package websocket
 
 import (
     "errors"
@@ -28,41 +28,30 @@ func (wrapper DialWrapper) Dial(urlString string, header http.Header) (Websocket
     return websocket.DefaultDialer.Dial(urlString, header)
 }
 
-type WebsocketClient struct {
+type websocketClient struct {
     dialer Dialer
-    done chan struct{}
-    connection WebsocketConn
 }
 
-func (client *WebsocketClient) connectAndListen(endpointUrl url.URL, interrupt *chan os.Signal) {
+func (client *websocketClient) Listen(endpointUrl url.URL, interrupt *chan os.Signal) {
     connection, err := client.createConnection(endpointUrl)
     if err != nil {
         log.Fatal("Connection error")
     }
-    client.connection = connection
 
-    defer client.connection.Close()
+    // Ensure connection gets closed no matter what.
+    defer connection.Close()
 
-    client.done = make(chan struct{})
+    done := make(chan struct{})
 
-    go client.listen()
-
-	for {
-		select {
-		case <-client.done:
-			return
-		case <-*interrupt:
-	        client.closeConnection()
-            return
-        }
-	}
+    go client.awaitMessages(connection, &done)
+    client.handleEvents(connection, &done, interrupt)
 }
 
 
-func (client *WebsocketClient) listen() {
-    defer close(client.done)
+func (client *websocketClient) awaitMessages(connection WebsocketConn, done *chan struct{}) {
+    defer close(*done)
     for {
-        _, message, err := client.connection.ReadMessage()
+        _, message, err := connection.ReadMessage()
         if err != nil {
             log.Println("read error:", err)
             return
@@ -71,13 +60,25 @@ func (client *WebsocketClient) listen() {
     }
 }
 
-func (client *WebsocketClient) closeConnection() error {
+func (client *websocketClient) handleEvents(connection WebsocketConn, done *chan struct{}, interrupt *chan os.Signal) {
+    for {
+		select {
+		case <-*done:
+			return
+		case <-*interrupt:
+	        client.closeConnection(connection, done)
+            return
+        }
+	}
+}
+
+func (client *websocketClient) closeConnection(connection WebsocketConn, done *chan struct{}) error {
     log.Println("interrupt")
-    if client.connection == nil {
+    if connection == nil {
         return errors.New("No open connection")
     }
 
-    err := client.connection.WriteMessage(
+    err := connection.WriteMessage(
         websocket.CloseMessage,
         websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
     )
@@ -86,16 +87,20 @@ func (client *WebsocketClient) closeConnection() error {
         return err
     }
     select {
-    case <-client.done:
+    case <-*done:
     case <-time.After(time.Second):
     }
 
     return nil
 }
 
-func (client *WebsocketClient) createConnection(endpointUrl url.URL) (WebsocketConn, error) {
+func (client *websocketClient) createConnection(endpointUrl url.URL) (WebsocketConn, error) {
     urlString := endpointUrl.String()
     log.Printf("connecting to %s", urlString)
 	connection, _, err := client.dialer.Dial(urlString, nil)
     return connection, err
+}
+
+func CreateWebsocketClient(dialer Dialer) websocketClient {
+    return websocketClient{dialer: dialer}
 }

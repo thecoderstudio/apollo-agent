@@ -1,4 +1,4 @@
-package main
+package websocket_test
 
 import (
 	"net/url"
@@ -18,7 +18,7 @@ func (mocked ConnMock) Close() error {
 }
 
 func (mocked ConnMock) ReadMessage() (messageType int, p []byte, err error) {
-    return 0, nil, nil
+    return 0, []byte("test message"), nil
 }
 
 func (mocked ConnMock) WriteMessage(messageType int, data []byte) error {
@@ -31,6 +31,12 @@ type DialerMock struct {
 
 func (mocked DialerMock) Dial(urlString string, header http.Header)(WebsocketConn, *http.Response, error) {
     return ConnMock{}, nil, nil
+}
+
+
+func TestListen(t *testing.T) {
+    client := WebsocketClient{dialer: DialerMock{}}
+    client.listen()
 }
 
 func TestCloseConnectError(t *testing.T) {

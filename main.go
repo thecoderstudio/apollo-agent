@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+
+    "github.com/thecoderstudio/apollo-agent/websocket"
 )
 
 var addr = flag.String("addr", "", "host address")
@@ -22,6 +24,6 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
-    client := WebsocketClient{dialer: DialWrapper{}}
-    client.connectAndListen(u, &interrupt)
+    client := websocket.CreateWebsocketClient(websocket.DialWrapper{})
+    client.Listen(u, &interrupt)
 }
