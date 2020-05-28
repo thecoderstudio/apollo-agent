@@ -1,7 +1,6 @@
 package websocket
 
 import (
-    "errors"
 	"log"
 	"net/url"
     "net/http"
@@ -74,9 +73,6 @@ func (client *websocketClient) handleEvents(connection WebsocketConn, done *chan
 
 func (client *websocketClient) closeConnection(connection WebsocketConn, done *chan struct{}) error {
     log.Println("interrupt")
-    if connection == nil {
-        return errors.New("No open connection")
-    }
 
     err := connection.WriteMessage(
         websocket.CloseMessage,

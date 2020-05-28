@@ -1,9 +1,11 @@
-package websocket_test
+package websocket
 
 import (
+    "errors"
 	"net/url"
     "net/http"
     "testing"
+	"os"
 
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"
@@ -14,7 +16,8 @@ type ConnMock struct {
 }
 
 func (mocked ConnMock) Close() error {
-    return nil
+    args := mocked.Called()
+    return args.Error(0)
 }
 
 func (mocked ConnMock) ReadMessage() (messageType int, p []byte, err error) {
@@ -22,7 +25,8 @@ func (mocked ConnMock) ReadMessage() (messageType int, p []byte, err error) {
 }
 
 func (mocked ConnMock) WriteMessage(messageType int, data []byte) error {
-    return nil
+    args := mocked.Called()
+    return args.Error(0)
 }
 
 type DialerMock struct {
@@ -35,32 +39,22 @@ func (mocked DialerMock) Dial(urlString string, header http.Header)(WebsocketCon
 
 
 func TestListen(t *testing.T) {
-    client := WebsocketClient{dialer: DialerMock{}}
-    client.listen()
-}
-
-func TestCloseConnectError(t *testing.T) {
-    client := WebsocketClient{dialer: DialerMock{}}
-    assert.EqualError(t, client.closeConnection(), "No open connection")
-}
-
-func TestCloseConnectSuccess(t *testing.T) {
-    u := url.URL{Scheme: "ws", Host: "localhost:1970", Path: "/ws"}
-    client := WebsocketClient{dialer: DialerMock{}}
-    client.connection, _ = client.createConnection(u)
-
-    assert.Nil(t, client.closeConnection())
-}
-
-func TestCreateConnection(t *testing.T) {
     u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
-    client := WebsocketClient{dialer: DialerMock{}}
+	interrupt := make(chan os.Signal, 1)
+    client := CreateWebsocketClient(DialerMock{})
+    go client.Listen(u, &interrupt)
+    close(interrupt)
+}
 
-    connection, err := client.createConnection(u)
+func TestCloseConnectionWriteError(t *testing.T) {
+    expectedError := errors.New("test")
 
-    if err != nil {
-        t.Errorf("createConnection erred: %s", err)
-    } else {
-        connection.Close()
-    }
+    mockObj := new(ConnMock)
+    mockObj.On("WriteMessage").Return(expectedError)
+    done := make(chan struct{})
+
+    client := CreateWebsocketClient(DialerMock{})
+    err := client.closeConnection(mockObj, &done)
+
+    assert.Equal(t, err, expectedError)
 }
