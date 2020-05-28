@@ -22,6 +22,6 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
-    client := WebsocketClient{}
+    client := WebsocketClient{dialer: DialWrapper{}}
     client.connectAndListen(u, &interrupt)
 }

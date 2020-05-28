@@ -3,19 +3,43 @@ package main
 import (
 	"log"
 	"net/url"
+    "net/http"
 	"time"
 	"os"
 
 	"github.com/gorilla/websocket"
 )
 
+type WebsocketConn interface {
+    Close() error
+    ReadMessage() (int, []byte, error)
+    WriteMessage(int, []byte) error
+}
+
+type Dialer interface {
+    Dial(string, http.Header) (WebsocketConn, *http.Response, error)
+}
+
+
+type DialWrapper struct {}
+
+func (wrapper DialWrapper) Dial(urlString string, header http.Header) (WebsocketConn, *http.Response, error) {
+    return websocket.DefaultDialer.Dial(urlString, header)
+}
+
 type WebsocketClient struct {
+    dialer Dialer
     done chan struct{}
-    connection websocket.Conn
+    connection WebsocketConn
 }
 
 func (client *WebsocketClient) connectAndListen(endpointUrl url.URL, interrupt *chan os.Signal) {
-    client.connection = *client.createConnection(endpointUrl)
+    connection, err := client.createConnection(endpointUrl)
+    if err != nil {
+        log.Fatal("Connection error")
+    }
+    client.connection = connection
+
     defer client.connection.Close()
 
     client.done = make(chan struct{})
@@ -63,13 +87,9 @@ func (client *WebsocketClient) closeConnection() {
     }
 }
 
-func createConnection(endpointUrl url.URL) *websocket.Conn {
+func (client *WebsocketClient) createConnection(endpointUrl url.URL) (WebsocketConn, error) {
     urlString := endpointUrl.String()
     log.Printf("connecting to %s", urlString)
-
-	connection, _, err := websocket.DefaultDialer.Dial(urlString, nil)
-	if err != nil {
-		log.Fatal("dial error:", err)
-	}
-    return connection
+	connection, _, err := client.dialer.Dial(urlString, nil)
+    return connection, err
 }
