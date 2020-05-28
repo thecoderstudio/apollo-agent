@@ -5,6 +5,7 @@ import (
     "net/http"
     "testing"
 
+    "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"
 )
 
@@ -32,8 +33,21 @@ func (mocked DialerMock) Dial(urlString string, header http.Header)(WebsocketCon
     return ConnMock{}, nil, nil
 }
 
-func TestCreateConnection(t *testing.T) {
+func TestCloseConnectError(t *testing.T) {
+    client := WebsocketClient{dialer: DialerMock{}}
+    assert.EqualError(t, client.closeConnection(), "No open connection")
+}
+
+func TestCloseConnectSuccess(t *testing.T) {
     u := url.URL{Scheme: "ws", Host: "localhost:1970", Path: "/ws"}
+    client := WebsocketClient{dialer: DialerMock{}}
+    client.connection, _ = client.createConnection(u)
+
+    assert.Nil(t, client.closeConnection())
+}
+
+func TestCreateConnection(t *testing.T) {
+    u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
     client := WebsocketClient{dialer: DialerMock{}}
 
     connection, err := client.createConnection(u)

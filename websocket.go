@@ -1,6 +1,7 @@
 package main
 
 import (
+    "errors"
 	"log"
 	"net/url"
     "net/http"
@@ -70,8 +71,11 @@ func (client *WebsocketClient) listen() {
     }
 }
 
-func (client *WebsocketClient) closeConnection() {
+func (client *WebsocketClient) closeConnection() error {
     log.Println("interrupt")
+    if client.connection == nil {
+        return errors.New("No open connection")
+    }
 
     err := client.connection.WriteMessage(
         websocket.CloseMessage,
@@ -79,12 +83,14 @@ func (client *WebsocketClient) closeConnection() {
     )
     if err != nil {
         log.Println("Close err:", err)
-        return
+        return err
     }
     select {
     case <-client.done:
     case <-time.After(time.Second):
     }
+
+    return nil
 }
 
 func (client *WebsocketClient) createConnection(endpointUrl url.URL) (WebsocketConn, error) {
