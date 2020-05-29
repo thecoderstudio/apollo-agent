@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+    "time"
 	"os"
 
 	"github.com/gorilla/websocket"
@@ -37,7 +38,7 @@ type client struct {
 
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
 // by closing the interrupt channel.
-func (client *client) Listen(endpointURL url.URL, interrupt *chan os.Signal) (<-chan string, <-chan error, <-chan struct{}) {
+func (client *client) Listen(endpointURL url.URL, interrupt *chan os.Signal) (<-chan string, <-chan struct{}, <-chan error) {
     out := make(chan string)
     errs := make(chan error)
     done := make(chan struct{})
@@ -50,16 +51,20 @@ func (client *client) Listen(endpointURL url.URL, interrupt *chan os.Signal) (<-
         if err != nil {
             log.Println("Connection error")
             errs <- err
+            return
         }
 
-        // Ensure connection gets closed no matter what.
-        defer connection.Close()
+        awaitDone := make(chan struct{})
 
-        go client.awaitMessages(connection, &out, &errs, &done)
-        errs <- client.handleEvents(connection, &done, interrupt)
+        go client.awaitMessages(&connection, &out, &errs, &done, &awaitDone)
+        err = client.handleEvents(&connection, &awaitDone, interrupt)
+
+        connection.Close()
+        close(done)
+        <-awaitDone
     }()
 
-    return out, errs, done
+    return out, done, errs
 }
 
 func (client *client) createConnection(endpointURL url.URL) (WebsocketConn, error) {
@@ -69,33 +74,44 @@ func (client *client) createConnection(endpointURL url.URL) (WebsocketConn, erro
 	return connection, err
 }
 
-func (client *client) awaitMessages(connection WebsocketConn, out *chan string, errs *chan error, done *chan struct{}) {
-    defer close(*done)
+func (client *client) awaitMessages(connection *WebsocketConn, out *chan string, errs *chan error, done, awaitDone *chan struct{}) {
+    defer close(*awaitDone)
+    ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+    conn := *connection
 	for {
-		_, message, err := connection.ReadMessage()
-		if err != nil {
-			log.Println("read error:", err)
-			return
-		}
-        *out <- string(message)
+        select {
+            case <-*done:
+                return
+            case <-ticker.C:
+                _, message, err := conn.ReadMessage()
+                if err != nil {
+                    log.Println("read error:", err)
+                    *errs <- err
+                    return
+                }
+                *out <- string(message)
+        }
 	}
 }
 
-func (client *client) handleEvents(connection WebsocketConn, done *chan struct{}, interrupt *chan os.Signal) error {
+func (client *client) handleEvents(connection *WebsocketConn, awaitDone *chan struct{}, interrupt *chan os.Signal) error {
 	for {
 		select {
-		case <-*done:
+		case <-*awaitDone:
 			return nil
 		case <-*interrupt:
             log.Println("interrupt")
-			err := client.closeConnection(connection)
+			err := client.closeConnection(connection, awaitDone)
 			return err
 		}
 	}
 }
 
-func (client *client) closeConnection(connection WebsocketConn) error {
-	err := connection.WriteMessage(
+func (client *client) closeConnection(connection *WebsocketConn, awaitDone *chan struct{}) error {
+    conn := *connection
+	err := conn.WriteMessage(
 		websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
 	)
@@ -103,6 +119,7 @@ func (client *client) closeConnection(connection WebsocketConn) error {
 		log.Println("Close err:", err)
 		return err
 	}
+
 	return nil
 }
 

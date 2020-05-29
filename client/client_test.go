@@ -5,7 +5,6 @@ import (
 	"net/url"
     "net/http"
     "testing"
-    "time"
 	"os"
 
     "github.com/stretchr/testify/assert"
@@ -75,14 +74,20 @@ func (suite *ClientTestSuite) TestListenSuccess() {
         "WriteMessage",
         websocket.CloseMessage,
         websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")).Return(nil)
-    mockConn.On("ReadMessage").Return(0, nil, nil)
+    mockConn.On("ReadMessage").Return(0, []byte("test message"), nil)
 
     mockDialer := new(DialerMock)
     mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
 
     wsClient := client.Create(mockDialer)
-    go wsClient.Listen(u, &interrupt)
+    out, done, _ := wsClient.Listen(u, &interrupt)
+
+    message := <-out
+    assert.Equal(suite.T(), message, "test message")
+
     close(interrupt)
+
+    assert.NotNil(suite.T(), <-done)
 }
 
 func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
@@ -102,9 +107,11 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
     mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
 
     wsClient := client.Create(mockDialer)
-    go wsClient.Listen(u, &interrupt)
+    out, done, _ := wsClient.Listen(u, &interrupt)
+    <-out
+
     close(interrupt)
-    time.Sleep(1 * time.Second)
+    assert.NotNil(suite.T(), <-done)
 
     mockConn.AssertExpectations(suite.T())
 }
@@ -119,7 +126,8 @@ func (suite *ClientTestSuite) TestConnectionError() {
     mockDialer.On("Dial", u.String(), http.Header(nil)).Return(nil, nil, expectedError)
 
     wsClient := client.Create(mockDialer)
-    err := wsClient.Listen(u, &interrupt)
+    _, _, errs := wsClient.Listen(u, &interrupt)
+    err := <-errs
 
     mockDialer.AssertExpectations(suite.T())
     assert.EqualError(suite.T(), err, "connection error")
@@ -139,9 +147,12 @@ func (suite *ClientTestSuite) TestReadMessageError() {
     mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
 
     wsClient := client.Create(mockDialer)
-    wsClient.Listen(u, &interrupt)
+    _, done, errs := wsClient.Listen(u, &interrupt)
+    err := <-errs
+    <-done
 
     mockConn.AssertExpectations(suite.T())
+    assert.EqualError(suite.T(), err, "read error")
 }
 
 func TestClientSuite(t *testing.T) {

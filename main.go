@@ -25,7 +25,7 @@ func main() {
 
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
     wsClient := client.Create(client.DialWrapper{})
-    out, errs, done := wsClient.Listen(u, &interrupt)
+    out, done, errs := wsClient.Listen(u, &interrupt)
     for {
         select {
             case msg := <-out:
