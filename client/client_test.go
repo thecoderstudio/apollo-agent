@@ -15,6 +15,8 @@ import (
     "github.com/thecoderstudio/apollo-agent/client"
 )
 
+var u = url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
+
 type ConnMock struct {
     mock.Mock
 }
@@ -65,7 +67,6 @@ type ClientTestSuite struct {
 }
 
 func (suite *ClientTestSuite) TestListenSuccess() {
-    u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
 	interrupt := make(chan os.Signal, 1)
 
     mockConn := new(ConnMock)
@@ -81,8 +82,8 @@ func (suite *ClientTestSuite) TestListenSuccess() {
 
     wsClient := client.Create(mockDialer)
     out, done, _ := wsClient.Listen(u, &interrupt)
-
     message := <-out
+
     assert.Equal(suite.T(), message, "test message")
 
     close(interrupt)
@@ -92,7 +93,6 @@ func (suite *ClientTestSuite) TestListenSuccess() {
 
 func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
     expectedError := errors.New("test")
-    u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
 	interrupt := make(chan os.Signal, 1)
 
     mockConn := new(ConnMock)
@@ -111,14 +111,13 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
     <-out
 
     close(interrupt)
-    assert.NotNil(suite.T(), <-done)
 
+    assert.NotNil(suite.T(), <-done)
     mockConn.AssertExpectations(suite.T())
 }
 
 func (suite *ClientTestSuite) TestConnectionError() {
     expectedError := errors.New("connection error")
-    u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
 	interrupt := make(chan os.Signal, 1)
     defer close(interrupt)
 
@@ -135,7 +134,6 @@ func (suite *ClientTestSuite) TestConnectionError() {
 
 func (suite *ClientTestSuite) TestReadMessageError() {
     expectedError := errors.New("read error")
-    u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
 	interrupt := make(chan os.Signal, 1)
     defer close(interrupt)
 
@@ -149,8 +147,8 @@ func (suite *ClientTestSuite) TestReadMessageError() {
     wsClient := client.Create(mockDialer)
     _, done, errs := wsClient.Listen(u, &interrupt)
     err := <-errs
-    <-done
 
+    assert.NotNil(suite.T(), <-done)
     mockConn.AssertExpectations(suite.T())
     assert.EqualError(suite.T(), err, "read error")
 }

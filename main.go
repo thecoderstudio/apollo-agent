@@ -24,7 +24,7 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
-    wsClient := client.Create(client.DialWrapper{})
+    wsClient := client.Create(new(client.DialWrapper))
     out, done, errs := wsClient.Listen(u, &interrupt)
     for {
         select {
