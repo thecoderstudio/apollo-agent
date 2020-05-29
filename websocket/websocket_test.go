@@ -9,6 +9,7 @@ import (
 
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"
+	"github.com/gorilla/websocket"
 )
 
 type ConnMock struct {
@@ -25,7 +26,7 @@ func (mocked ConnMock) ReadMessage() (messageType int, p []byte, err error) {
 }
 
 func (mocked ConnMock) WriteMessage(messageType int, data []byte) error {
-    args := mocked.Called()
+    args := mocked.Called(messageType, data)
     return args.Error(0)
 }
 
@@ -34,14 +35,37 @@ type DialerMock struct {
 }
 
 func (mocked DialerMock) Dial(urlString string, header http.Header)(WebsocketConn, *http.Response, error) {
-    return ConnMock{}, nil, nil
+    args := mocked.Called(urlString, header)
+
+    var connection WebsocketConn
+    if args.Get(0) != nil {
+        connection = args.Get(0).(WebsocketConn)
+    }
+
+    var response http.Response
+    if args.Get(1) != nil {
+        response = args.Get(1).(http.Response)
+    }
+
+    return connection, &response, args.Error(2)
 }
 
 
 func TestListen(t *testing.T) {
     u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
 	interrupt := make(chan os.Signal, 1)
-    client := CreateWebsocketClient(DialerMock{})
+
+    mockConn := new(ConnMock)
+    mockConn.On("Close").Return(nil)
+    mockConn.On(
+        "WriteMessage",
+        websocket.CloseMessage,
+        websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")).Return(nil)
+
+    mockDialer := new(DialerMock)
+    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
+
+    client := CreateWebsocketClient(mockDialer)
     go client.Listen(u, &interrupt)
     close(interrupt)
 }
@@ -50,7 +74,11 @@ func TestCloseConnectionWriteError(t *testing.T) {
     expectedError := errors.New("test")
 
     mockObj := new(ConnMock)
-    mockObj.On("WriteMessage").Return(expectedError)
+    mockObj.On(
+        "WriteMessage",
+        websocket.CloseMessage,
+        websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")).Return(expectedError)
+
     done := make(chan struct{})
 
     client := CreateWebsocketClient(DialerMock{})
