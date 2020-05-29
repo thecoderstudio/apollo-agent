@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/signal"
 
-    "github.com/thecoderstudio/apollo-agent/websocket"
+    "github.com/thecoderstudio/apollo-agent/client"
 )
 
 var addr = flag.String("addr", "", "host address")

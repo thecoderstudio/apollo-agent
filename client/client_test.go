@@ -8,10 +8,12 @@ import (
     "time"
 	"os"
 
+    "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"
+    "github.com/stretchr/testify/suite"
 	"github.com/gorilla/websocket"
 
-    "github.com/thecoderstudio/apollo-agent/websocket"
+    "github.com/thecoderstudio/apollo-agent/client"
 )
 
 type ConnMock struct {
@@ -24,7 +26,14 @@ func (mocked ConnMock) Close() error {
 }
 
 func (mocked ConnMock) ReadMessage() (messageType int, p []byte, err error) {
-    return 0, []byte("test message"), nil
+    args := mocked.Called()
+
+    var message []byte
+    if args.Get(1) != nil {
+        message = args.Get(1).([]byte)
+    }
+
+    return args.Int(0), message, args.Error(2)
 }
 
 func (mocked ConnMock) WriteMessage(messageType int, data []byte) error {
@@ -52,8 +61,11 @@ func (mocked DialerMock) Dial(urlString string, header http.Header)(client.Webso
     return connection, &response, args.Error(2)
 }
 
+type ClientTestSuite struct {
+    suite.Suite
+}
 
-func TestListen(t *testing.T) {
+func (suite *ClientTestSuite) TestListenSuccess() {
     u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
 	interrupt := make(chan os.Signal, 1)
 
@@ -63,6 +75,7 @@ func TestListen(t *testing.T) {
         "WriteMessage",
         websocket.CloseMessage,
         websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")).Return(nil)
+    mockConn.On("ReadMessage").Return(0, nil, nil)
 
     mockDialer := new(DialerMock)
     mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
@@ -72,7 +85,7 @@ func TestListen(t *testing.T) {
     close(interrupt)
 }
 
-func TestCloseConnectionWriteError(t *testing.T) {
+func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
     expectedError := errors.New("test")
     u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
 	interrupt := make(chan os.Signal, 1)
@@ -83,6 +96,7 @@ func TestCloseConnectionWriteError(t *testing.T) {
         "WriteMessage",
         websocket.CloseMessage,
         websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")).Return(expectedError)
+    mockConn.On("ReadMessage").Return(0, nil, nil)
 
     mockDialer := new(DialerMock)
     mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
@@ -90,7 +104,46 @@ func TestCloseConnectionWriteError(t *testing.T) {
     wsClient := client.Create(mockDialer)
     go wsClient.Listen(u, &interrupt)
     close(interrupt)
-    time.Sleep(5 * time.Second)
+    time.Sleep(1 * time.Second)
 
-    mockConn.AssertExpectations(t)
+    mockConn.AssertExpectations(suite.T())
+}
+
+func (suite *ClientTestSuite) TestConnectionError() {
+    expectedError := errors.New("connection error")
+    u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
+	interrupt := make(chan os.Signal, 1)
+    defer close(interrupt)
+
+    mockDialer := new(DialerMock)
+    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(nil, nil, expectedError)
+
+    wsClient := client.Create(mockDialer)
+    err := wsClient.Listen(u, &interrupt)
+
+    mockDialer.AssertExpectations(suite.T())
+    assert.EqualError(suite.T(), err, "connection error")
+}
+
+func (suite *ClientTestSuite) TestReadMessageError() {
+    expectedError := errors.New("read error")
+    u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
+	interrupt := make(chan os.Signal, 1)
+    defer close(interrupt)
+
+    mockConn := new(ConnMock)
+    mockConn.On("Close").Return(nil)
+    mockConn.On("ReadMessage").Return(0, nil, expectedError)
+
+    mockDialer := new(DialerMock)
+    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
+
+    wsClient := client.Create(mockDialer)
+    wsClient.Listen(u, &interrupt)
+
+    mockConn.AssertExpectations(suite.T())
+}
+
+func TestClientSuite(t *testing.T) {
+    suite.Run(t, new(ClientTestSuite))
 }

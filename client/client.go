@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/url"
     "net/http"
-	"time"
 	"os"
 
 	"github.com/gorilla/websocket"
@@ -34,7 +33,7 @@ type client struct {
 func (client *client) Listen(endpointUrl url.URL, interrupt *chan os.Signal) error {
     connection, err := client.createConnection(endpointUrl)
     if err != nil {
-        log.Fatal("Connection error")
+        log.Println("Connection error")
         return err
     }
 
@@ -51,12 +50,11 @@ func (client *client) Listen(endpointUrl url.URL, interrupt *chan os.Signal) err
 func (client *client) awaitMessages(connection WebsocketConn, done *chan struct{}) {
     defer close(*done)
     for {
-        _, message, err := connection.ReadMessage()
+        _, _, err := connection.ReadMessage()
         if err != nil {
             log.Println("read error:", err)
             return
         }
-        log.Printf("recv: %s", message)
     }
 }
 
@@ -82,10 +80,6 @@ func (client *client) closeConnection(connection WebsocketConn, done *chan struc
     if err != nil {
         log.Println("Close err:", err)
         return err
-    }
-    select {
-    case <-*done:
-    case <-time.After(time.Second):
     }
     return nil
 }
