@@ -1,15 +1,17 @@
-package websocket
+package client_test
 
 import (
     "errors"
 	"net/url"
     "net/http"
     "testing"
+    "time"
 	"os"
 
-    "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"
 	"github.com/gorilla/websocket"
+
+    "github.com/thecoderstudio/apollo-agent/websocket"
 )
 
 type ConnMock struct {
@@ -34,12 +36,12 @@ type DialerMock struct {
     mock.Mock
 }
 
-func (mocked DialerMock) Dial(urlString string, header http.Header)(WebsocketConn, *http.Response, error) {
+func (mocked DialerMock) Dial(urlString string, header http.Header)(client.WebsocketConn, *http.Response, error) {
     args := mocked.Called(urlString, header)
 
-    var connection WebsocketConn
+    var connection client.WebsocketConn
     if args.Get(0) != nil {
-        connection = args.Get(0).(WebsocketConn)
+        connection = args.Get(0).(client.WebsocketConn)
     }
 
     var response http.Response
@@ -65,24 +67,30 @@ func TestListen(t *testing.T) {
     mockDialer := new(DialerMock)
     mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
 
-    client := CreateWebsocketClient(mockDialer)
-    go client.Listen(u, &interrupt)
+    wsClient := client.Create(mockDialer)
+    go wsClient.Listen(u, &interrupt)
     close(interrupt)
 }
 
 func TestCloseConnectionWriteError(t *testing.T) {
     expectedError := errors.New("test")
+    u := url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
+	interrupt := make(chan os.Signal, 1)
 
-    mockObj := new(ConnMock)
-    mockObj.On(
+    mockConn := new(ConnMock)
+    mockConn.On("Close").Return(nil)
+    mockConn.On(
         "WriteMessage",
         websocket.CloseMessage,
         websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")).Return(expectedError)
 
-    done := make(chan struct{})
+    mockDialer := new(DialerMock)
+    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
 
-    client := CreateWebsocketClient(DialerMock{})
-    err := client.closeConnection(mockObj, &done)
+    wsClient := client.Create(mockDialer)
+    go wsClient.Listen(u, &interrupt)
+    close(interrupt)
+    time.Sleep(5 * time.Second)
 
-    assert.Equal(t, err, expectedError)
+    mockConn.AssertExpectations(t)
 }
