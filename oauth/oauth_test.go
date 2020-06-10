@@ -1,6 +1,7 @@
 package oauth_test
 
 import (
+    "encoding/json"
     "net/http"
     "net/http/httptest"
     "strings"
@@ -17,7 +18,9 @@ func TestGetAccessToken(t *testing.T) {
     oauthClient := oauth.Create(strings.TrimPrefix(serverMock.URL, "http://"))
     token := oauthClient.GetAccessToken()
 
-    assert.Equal(t, token, "Test")
+    assert.Equal(t, token.AccessToken, "faketoken")
+    assert.Equal(t, token.ExpiresIn, 3600)
+    assert.Equal(t, token.TokenType, "Bearer")
 }
 
 func createServerMock() *httptest.Server {
@@ -27,5 +30,12 @@ func createServerMock() *httptest.Server {
 }
 
 func authTokenMock(writer http.ResponseWriter, request *http.Request) {
-    _, _ = writer.Write([]byte("Test"))
+    accessToken := &oauth.AccessToken{
+        AccessToken:    "faketoken",
+        ExpiresIn:      3600,
+        TokenType:      "Bearer",
+    }
+
+    accessTokenJson, _ := json.Marshal(accessToken)
+    _, _ = writer.Write(accessTokenJson)
 }

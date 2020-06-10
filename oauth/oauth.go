@@ -10,12 +10,18 @@ import (
     "net/url"
 )
 
+type AccessToken struct {
+    AccessToken string `json:"access_token"`
+    ExpiresIn   int `json:"expires_in"`
+    TokenType   string `json:"token_type"`
+}
+
 type OAuthClient struct {
     Host string
     Client http.Client
 }
 
-func (client *OAuthClient) GetAccessToken() string {
+func (client *OAuthClient) GetAccessToken() AccessToken {
     url := url.URL{Scheme: "http", Host: client.Host, Path: "/oauth/token"}
     values := map[string]string{"grant_type": "client_credentials"}
     jsonValue, _ := json.Marshal(values)
@@ -41,8 +47,9 @@ func (client *OAuthClient) GetAccessToken() string {
 
     fmt.Println("response Status:", resp.Status)
     body, _ := ioutil.ReadAll(resp.Body)
-    fmt.Println("response Body:", string(body))
-    return string(body)
+    accessToken := AccessToken{}
+    json.Unmarshal(body, &accessToken)
+    return accessToken
 }
 
 func Create(host string) OAuthClient {
