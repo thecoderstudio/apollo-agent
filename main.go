@@ -24,7 +24,7 @@ func main() {
     interrupt := make(chan os.Signal, 1)
     signal.Notify(interrupt, os.Interrupt)
 
-    oauthClient := oauth.OAuthClient{Host: *addr}
+    oauthClient := oauth.Create(*addr)
     oauthClient.GetAccessToken()
 
     u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
