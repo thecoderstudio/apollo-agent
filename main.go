@@ -8,6 +8,7 @@ import (
     "os/signal"
 
     "github.com/thecoderstudio/apollo-agent/client"
+    "github.com/thecoderstudio/apollo-agent/oauth"
 )
 
 var addr = flag.String("addr", "", "host address")
@@ -22,6 +23,9 @@ func main() {
 
     interrupt := make(chan os.Signal, 1)
     signal.Notify(interrupt, os.Interrupt)
+
+    oauthClient := oauth.OAuthClient{Host: *addr}
+    oauthClient.GetAccessToken()
 
     u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
     wsClient := client.Create(new(client.DialWrapper))
