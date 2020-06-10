@@ -15,7 +15,7 @@ type OAuthClient struct {
     Client http.Client
 }
 
-func (client *OAuthClient) GetAccessToken() {
+func (client *OAuthClient) GetAccessToken() string {
     url := url.URL{Scheme: "http", Host: client.Host, Path: "/oauth/token"}
     values := map[string]string{"grant_type": "client_credentials"}
     jsonValue, _ := json.Marshal(values)
@@ -24,12 +24,16 @@ func (client *OAuthClient) GetAccessToken() {
 
     auth := fmt.Sprintf("Basic %s", b64.StdEncoding.EncodeToString([]byte(creds)))
 
-    req, _ := http.NewRequest("POST", url.String(), bytes.NewBuffer(jsonValue))
+    req, err := http.NewRequest("POST", url.String(), bytes.NewBuffer(jsonValue))
+    if err != nil {
+        panic(err)
+    }
+
     req.Header.Add("authorization", auth)
     req.Header.Add("Content-Type", "application/json")
 
     resp, err := client.Client.Do(req)
-	if err != nil {
+    if err != nil {
         panic(err)
     }
 
@@ -38,6 +42,7 @@ func (client *OAuthClient) GetAccessToken() {
     fmt.Println("response Status:", resp.Status)
     body, _ := ioutil.ReadAll(resp.Body)
     fmt.Println("response Body:", string(body))
+    return string(body)
 }
 
 func Create(host string) OAuthClient {
