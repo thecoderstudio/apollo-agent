@@ -30,14 +30,16 @@ func main() {
     signal.Notify(interrupt, os.Interrupt)
 
     oauthClient := oauth.Create(host, opts.AgentID, opts.Secret)
-    newAccessToken := oauthClient.GetContinuousAccessToken()
-    accessToken := <-*newAccessToken
+    accessTokenChan := oauthClient.GetContinuousAccessToken()
+    initialToken := <-*accessTokenChan
 
     u := url.URL{Scheme: "ws", Host: host, Path: "/ws"}
     wsClient := client.Create(new(client.DialWrapper))
-    out, done, errs := wsClient.Listen(u, accessToken, &interrupt)
+    out, done, errs := wsClient.Listen(u, initialToken, &interrupt)
     for {
         select {
+        case newAccessToken := <-*accessTokenChan:
+            out, done, errs = wsClient.Listen(u, newAccessToken, &interrupt)
         case msg := <-out:
             log.Println(msg)
         case err := <-errs:
