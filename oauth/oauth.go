@@ -5,23 +5,28 @@ import (
     b64 "encoding/base64"
     "encoding/json"
 	"fmt"
+    "time"
 	"io/ioutil"
     "net/http"
     "net/url"
 )
 
+// AccessToken is meant to be sent in an Authorization header to the Apollo API.
 type AccessToken struct {
     AccessToken string `json:"access_token"`
     ExpiresIn   int `json:"expires_in"`
     TokenType   string `json:"token_type"`
 }
 
-type OAuthClient struct {
+// Client is responsible for getting an AccessToken through the OAuth protocol.
+type Client struct {
     Host string
     Client http.Client
 }
 
-func (client *OAuthClient) GetAccessToken() AccessToken {
+
+// GetAccessToken requests and returns an AccessToken.
+func (client *Client) GetAccessToken() AccessToken {
     url := url.URL{Scheme: "http", Host: client.Host, Path: "/oauth/token"}
     values := map[string]string{"grant_type": "client_credentials"}
     jsonValue, _ := json.Marshal(values)
@@ -53,14 +58,23 @@ func (client *OAuthClient) GetAccessToken() AccessToken {
     return accessToken
 }
 
-func (client *OAuthClient) GetContinuousAccessToken() *chan AccessToken {
+// GetContinuousAccessToken returns a channel over which an AccessToken will be sent.
+// When the AccessToken is close to expiration a new one will get requested and sent.
+func (client *Client) GetContinuousAccessToken() *chan AccessToken {
     channel := make(chan AccessToken)
-    go func() {
-        channel <- client.GetAccessToken()
-    }()
+    go client.keepTokenAlive(&channel)
     return &channel
 }
 
-func Create(host string) OAuthClient {
-    return OAuthClient{Host: host, Client: http.Client{}}
+func (client *Client) keepTokenAlive(accessTokenChannel *chan AccessToken) {
+    for {
+        newAccessToken := client.GetAccessToken()
+        *accessTokenChannel <- newAccessToken
+        time.Sleep(time.Duration(newAccessToken.ExpiresIn - 120) * time.Second)
+    }
+}
+
+// Create is a factory to create a properly instantiated Client
+func Create(host string) Client {
+    return Client{Host: host, Client: http.Client{}}
 }
