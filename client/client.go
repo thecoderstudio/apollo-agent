@@ -2,11 +2,11 @@ package client
 
 import (
     "log"
-	"fmt"
+    "fmt"
     "net/http"
     "net/url"
-    "time"
     "os"
+    "time"
 
     "github.com/gorilla/websocket"
     "github.com/thecoderstudio/apollo-agent/oauth"
