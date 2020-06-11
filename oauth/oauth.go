@@ -35,7 +35,7 @@ func (client *OAuthClient) GetAccessToken() AccessToken {
         panic(err)
     }
 
-    req.Header.Add("authorization", auth)
+    req.Header.Add("Authorization", auth)
     req.Header.Add("Content-Type", "application/json")
 
     resp, err := client.Client.Do(req)

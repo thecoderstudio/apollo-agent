@@ -30,6 +30,13 @@ func createServerMock() *httptest.Server {
 }
 
 func authTokenMock(writer http.ResponseWriter, request *http.Request) {
+    if request.Header.Get("Authorization") == "" {
+        errorBody := map[string]string{"detail": "Invalid Authorization header"}
+        errorBodyJson, _ := json.Marshal(errorBody)
+        writer.WriteHeader(http.StatusBadRequest)
+        writer.Write(errorBodyJson)
+    }
+
     accessToken := &oauth.AccessToken{
         AccessToken:    "faketoken",
         ExpiresIn:      3600,
