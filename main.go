@@ -12,6 +12,8 @@ import (
 )
 
 var addr = flag.String("addr", "", "host address")
+var agentID = flag.String("agent-id", "", "Apollo agent id")
+var secret = flag.String("secret", "", "Apollo OAuth client secret")
 
 func main() {
     flag.Parse()
@@ -24,7 +26,7 @@ func main() {
     interrupt := make(chan os.Signal, 1)
     signal.Notify(interrupt, os.Interrupt)
 
-    oauthClient := oauth.Create(*addr)
+    oauthClient := oauth.Create(*addr, *agentID, *secret)
     newAccessToken := oauthClient.GetContinuousAccessToken()
     accessToken := <-*newAccessToken
 

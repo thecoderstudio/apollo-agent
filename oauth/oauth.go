@@ -6,6 +6,7 @@ import (
     "encoding/json"
 	"fmt"
     "time"
+    "log"
 	"io/ioutil"
     "net/http"
     "net/url"
@@ -22,6 +23,8 @@ type AccessToken struct {
 type Client struct {
     Host string
     Client http.Client
+    AgentID string
+    ClientSecret string
 }
 
 
@@ -31,14 +34,12 @@ func (client *Client) GetAccessToken() AccessToken {
     values := map[string]string{"grant_type": "client_credentials"}
     jsonValue, _ := json.Marshal(values)
 
-    // Fake creds
-    creds := "73d711e0-923d-42a7-9857-5f3d67d88370:8f5712b5efc5fd711abb3d16925e25a41561e92a041ab4956083d2cfdb5f442e"
-
+    creds := fmt.Sprintf("%s:%s", client.AgentID, client.ClientSecret)
     auth := fmt.Sprintf("Basic %s", b64.StdEncoding.EncodeToString([]byte(creds)))
 
     req, err := http.NewRequest("POST", url.String(), bytes.NewBuffer(jsonValue))
     if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
 
     req.Header.Add("Authorization", auth)
@@ -46,7 +47,7 @@ func (client *Client) GetAccessToken() AccessToken {
 
     resp, err := client.Client.Do(req)
     if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
 
     defer resp.Body.Close()
@@ -75,6 +76,11 @@ func (client *Client) keepTokenAlive(accessTokenChannel *chan AccessToken, offse
 }
 
 // Create is a factory to create a properly instantiated Client
-func Create(host string) Client {
-    return Client{Host: host, Client: http.Client{}}
+func Create(host string, agentID string, clientSecret string) Client {
+    return Client{
+        Host: host,
+        Client: http.Client{},
+        AgentID: agentID,
+        ClientSecret: clientSecret,
+    }
 }
