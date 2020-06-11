@@ -29,9 +29,15 @@ func main() {
     interrupt := make(chan os.Signal, 1)
     signal.Notify(interrupt, os.Interrupt)
 
+    var initialToken oauth.AccessToken
     oauthClient := oauth.Create(host, opts.AgentID, opts.Secret)
-    accessTokenChan := oauthClient.GetContinuousAccessToken()
-    initialToken := <-*accessTokenChan
+    accessTokenChan, oauthErrs := oauthClient.GetContinuousAccessToken()
+    select {
+    case newAccessToken := <-*accessTokenChan:
+        initialToken = newAccessToken
+    case err := <-*oauthErrs:
+        log.Fatal(err)
+    }
 
     u := url.URL{Scheme: "ws", Host: host, Path: "/ws"}
     wsClient := client.Create(new(client.DialWrapper))

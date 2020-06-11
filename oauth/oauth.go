@@ -6,7 +6,6 @@ import (
     "encoding/json"
 	"fmt"
     "time"
-    "log"
 	"io/ioutil"
     "net/http"
     "net/url"
@@ -29,17 +28,18 @@ type Client struct {
 
 
 // GetAccessToken requests and returns an AccessToken.
-func (client *Client) GetAccessToken() AccessToken {
+func (client *Client) GetAccessToken() (AccessToken, error) {
     url := url.URL{Scheme: "http", Host: client.Host, Path: "/oauth/token"}
     values := map[string]string{"grant_type": "client_credentials"}
     jsonValue, _ := json.Marshal(values)
 
     creds := fmt.Sprintf("%s:%s", client.AgentID, client.ClientSecret)
     auth := fmt.Sprintf("Basic %s", b64.StdEncoding.EncodeToString([]byte(creds)))
+    var accessToken AccessToken
 
     req, err := http.NewRequest("POST", url.String(), bytes.NewBuffer(jsonValue))
     if err != nil {
-        log.Fatal(err)
+        return accessToken, err
     }
 
     req.Header.Add("Authorization", auth)
@@ -47,29 +47,34 @@ func (client *Client) GetAccessToken() AccessToken {
 
     resp, err := client.Client.Do(req)
     if err != nil {
-        log.Fatal(err)
+        return accessToken, err
     }
 
     defer resp.Body.Close()
 
     fmt.Println("response Status:", resp.Status)
     body, _ := ioutil.ReadAll(resp.Body)
-    accessToken := AccessToken{}
+    accessToken = AccessToken{}
     json.Unmarshal(body, &accessToken)
-    return accessToken
+    return accessToken, nil
 }
 
 // GetContinuousAccessToken returns a channel over which an AccessToken will be sent.
 // When the AccessToken is 2 minutes to expiration a new one will get requested and sent.
-func (client *Client) GetContinuousAccessToken() *chan AccessToken {
+func (client *Client) GetContinuousAccessToken() (*chan AccessToken, *chan error) {
     channel := make(chan AccessToken)
-    go client.keepTokenAlive(&channel, 120)
-    return &channel
+    errs := make(chan error)
+    go client.keepTokenAlive(&channel, &errs, 120)
+    return &channel, &errs
 }
 
-func (client *Client) keepTokenAlive(accessTokenChannel *chan AccessToken, offsetInSeconds int) {
+func (client *Client) keepTokenAlive(accessTokenChannel *chan AccessToken, errs *chan error, offsetInSeconds int) {
     for {
-        newAccessToken := client.GetAccessToken()
+        newAccessToken, err := client.GetAccessToken()
+        if err != nil {
+            *errs <- err
+            return
+        }
         *accessTokenChannel <- newAccessToken
         time.Sleep(time.Duration(newAccessToken.ExpiresIn - offsetInSeconds) * time.Second)
     }

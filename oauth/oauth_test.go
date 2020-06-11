@@ -14,7 +14,7 @@ import (
 )
 
 func TestGetAccessToken(t *testing.T) {
-    serverMock := createServerMock()
+    serverMock := createServerMock(false)
     defer serverMock.Close()
     oauthClient := oauth.Create(strings.TrimPrefix(serverMock.URL, "http://"), "", "")
     token := oauthClient.GetAccessToken()
@@ -24,8 +24,15 @@ func TestGetAccessToken(t *testing.T) {
     assert.Equal(t, token.TokenType, "Bearer")
 }
 
+func TestGetAccessTokenMalformedURL(t *testing.T) {
+    serverMock := createServerMock(false)
+    defer serverMock.Close()
+    oauthClient := oauth.Create("fakeurl", "", "")
+    oauthClient.GetAccessToken()
+}
+
 func TestGetContinuousAccessToken(t *testing.T) {
-    serverMock := createServerMock()
+    serverMock := createServerMock(false)
     defer serverMock.Close()
     oauthClient := oauth.Create(strings.TrimPrefix(serverMock.URL, "http://"), "", "")
 
@@ -40,13 +47,20 @@ func TestGetContinuousAccessToken(t *testing.T) {
     assert.LessOrEqual(t, elapsed.Seconds(), float64(2))
 }
 
-func createServerMock() *httptest.Server {
+func createServerMock(throwErr bool) *httptest.Server {
     handler := http.NewServeMux()
-    handler.HandleFunc("/oauth/token", authTokenMock)
+    handler.HandleFunc("/oauth/token", func(writer http.ResponseWriter, request *http.Request) {
+        authTokenMock(writer, request, throwErr)
+    })
     return httptest.NewServer(handler)
 }
 
-func authTokenMock(writer http.ResponseWriter, request *http.Request) {
+func authTokenMock(writer http.ResponseWriter, request *http.Request, throwErr bool) {
+    if throwErr {
+        _, _ = writer.Write([]byte("something wrong"))
+        return
+    }
+
     if request.Header.Get("Authorization") == "" {
         errorBody := map[string]string{"detail": "Invalid Authorization header"}
         errorBodyJSON, _ := json.Marshal(errorBody)
