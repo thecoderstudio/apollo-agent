@@ -17,8 +17,9 @@ func TestGetAccessToken(t *testing.T) {
     serverMock := createServerMock(false)
     defer serverMock.Close()
     oauthClient := oauth.Create(strings.TrimPrefix(serverMock.URL, "http://"), "", "")
-    token := oauthClient.GetAccessToken()
+    token, err := oauthClient.GetAccessToken()
 
+    assert.NoError(t, err)
     assert.Equal(t, token.AccessToken, "faketoken")
     assert.Equal(t, token.ExpiresIn, 121)
     assert.Equal(t, token.TokenType, "Bearer")
@@ -37,7 +38,7 @@ func TestGetContinuousAccessToken(t *testing.T) {
     oauthClient := oauth.Create(strings.TrimPrefix(serverMock.URL, "http://"), "", "")
 
     start := time.Now()
-    tokenChannel := oauthClient.GetContinuousAccessToken()
+    tokenChannel, _ := oauthClient.GetContinuousAccessToken()
     firstAccessToken := <-*tokenChannel
     secondAccessToken := <-*tokenChannel
     elapsed := time.Since(start)
