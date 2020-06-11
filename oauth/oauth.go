@@ -37,10 +37,7 @@ func (client *Client) GetAccessToken() (AccessToken, error) {
     auth := fmt.Sprintf("Basic %s", b64.StdEncoding.EncodeToString([]byte(creds)))
     var accessToken AccessToken
 
-    req, err := http.NewRequest("POST", url.String(), bytes.NewBuffer(jsonValue))
-    if err != nil {
-        return accessToken, err
-    }
+    req, _ := http.NewRequest("POST", url.String(), bytes.NewBuffer(jsonValue))
 
     req.Header.Add("Authorization", auth)
     req.Header.Add("Content-Type", "application/json")

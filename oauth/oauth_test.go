@@ -29,7 +29,8 @@ func TestGetAccessTokenMalformedURL(t *testing.T) {
     serverMock := createServerMock(false)
     defer serverMock.Close()
     oauthClient := oauth.Create("fakeurl", "", "")
-    oauthClient.GetAccessToken()
+    _, err := oauthClient.GetAccessToken()
+    assert.Error(t, err, "lookup fakeurl: no such host")
 }
 
 func TestGetContinuousAccessToken(t *testing.T) {
@@ -46,6 +47,15 @@ func TestGetContinuousAccessToken(t *testing.T) {
     assert.NotNil(t, firstAccessToken)
     assert.NotNil(t, secondAccessToken)
     assert.LessOrEqual(t, elapsed.Seconds(), float64(2))
+}
+
+func TestGetContinuousAccessTokenMalformedURL(t *testing.T) {
+    serverMock := createServerMock(false)
+    defer serverMock.Close()
+    oauthClient := oauth.Create("fakeurl", "", "")
+    _, errs := oauthClient.GetContinuousAccessToken()
+    err := <-*errs
+    assert.Error(t, err, "lookup fakeurl: no such host")
 }
 
 func createServerMock(throwErr bool) *httptest.Server {
