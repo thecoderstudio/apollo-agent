@@ -49,7 +49,6 @@ func (client *Client) GetAccessToken() (AccessToken, error) {
 
     defer resp.Body.Close()
 
-    fmt.Println("response Status:", resp.Status)
     body, _ := ioutil.ReadAll(resp.Body)
     accessToken = AccessToken{}
     json.Unmarshal(body, &accessToken)

@@ -20,18 +20,27 @@ var opts struct {
 
 func main() {
     log.SetFlags(0)
-    _, err := flags.Parse(&opts)
-    if err != nil {
-        panic(err)
-    }
-    host := opts.Host
+    parseArguments()
 
     interrupt := make(chan os.Signal, 1)
     signal.Notify(interrupt, os.Interrupt)
 
+    accessTokenChan, initialToken := setupOAuth()
+    connect(accessTokenChan, initialToken, &interrupt)
+    }
+
+func parseArguments() {
+    _, err := flags.Parse(&opts)
+    if err != nil {
+        panic(err)
+    }
+}
+
+func setupOAuth() (*chan oauth.AccessToken, oauth.AccessToken) {
     var initialToken oauth.AccessToken
-    oauthClient := oauth.Create(host, opts.AgentID, opts.Secret)
-    accessTokenChan, oauthErrs := oauthClient.GetContinuousAccessToken()
+    client := oauth.Create(opts.Host, opts.AgentID, opts.Secret)
+    accessTokenChan, oauthErrs := client.GetContinuousAccessToken()
+
     select {
     case newAccessToken := <-*accessTokenChan:
         initialToken = newAccessToken
@@ -39,13 +48,19 @@ func main() {
         log.Fatal(err)
     }
 
-    u := url.URL{Scheme: "ws", Host: host, Path: "/ws"}
+    return accessTokenChan, initialToken
+}
+
+func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessToken,
+             interrupt *chan os.Signal) {
+    u := url.URL{Scheme: "ws", Host: opts.Host, Path: "/ws"}
     wsClient := client.Create(new(client.DialWrapper))
-    out, done, errs := wsClient.Listen(u, initialToken, &interrupt)
+    out, done, errs := wsClient.Listen(u, initialToken, interrupt)
+
     for {
         select {
         case newAccessToken := <-*accessTokenChan:
-            out, done, errs = wsClient.Listen(u, newAccessToken, &interrupt)
+            out, done, errs = wsClient.Listen(u, newAccessToken, interrupt)
         case msg := <-out:
             log.Println(msg)
         case err := <-errs:
