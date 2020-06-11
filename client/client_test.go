@@ -13,6 +13,7 @@ import (
     "github.com/stretchr/testify/suite"
 
     "github.com/thecoderstudio/apollo-agent/client"
+    "github.com/thecoderstudio/apollo-agent/oauth"
 )
 
 var u = url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
@@ -78,10 +79,10 @@ func (suite *ClientTestSuite) TestListenSuccess() {
     mockConn.On("ReadMessage").Return(0, []byte("test message"), nil)
 
     mockDialer := new(DialerMock)
-    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
+    mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(mockConn, nil, nil)
 
     wsClient := client.Create(mockDialer)
-    out, done, _ := wsClient.Listen(u, &interrupt)
+    out, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &interrupt)
     message := <-out
 
     assert.Equal(suite.T(), message, "test message")
@@ -104,10 +105,10 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
     mockConn.On("ReadMessage").Return(0, nil, nil)
 
     mockDialer := new(DialerMock)
-    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
+    mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(mockConn, nil, nil)
 
     wsClient := client.Create(mockDialer)
-    out, done, _ := wsClient.Listen(u, &interrupt)
+    out, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &interrupt)
     <-out
 
     close(interrupt)
@@ -122,10 +123,10 @@ func (suite *ClientTestSuite) TestConnectionError() {
     defer close(interrupt)
 
     mockDialer := new(DialerMock)
-    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(nil, nil, expectedError)
+    mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(nil, nil, expectedError)
 
     wsClient := client.Create(mockDialer)
-    _, _, errs := wsClient.Listen(u, &interrupt)
+    _, _, errs := wsClient.Listen(u, oauth.AccessToken{}, &interrupt)
     err := <-errs
 
     mockDialer.AssertExpectations(suite.T())
@@ -142,10 +143,10 @@ func (suite *ClientTestSuite) TestReadMessageError() {
     mockConn.On("ReadMessage").Return(0, nil, expectedError)
 
     mockDialer := new(DialerMock)
-    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
+    mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(mockConn, nil, nil)
 
     wsClient := client.Create(mockDialer)
-    _, done, errs := wsClient.Listen(u, &interrupt)
+    _, done, errs := wsClient.Listen(u, oauth.AccessToken{}, &interrupt)
     err := <-errs
 
     assert.NotNil(suite.T(), <-done)
