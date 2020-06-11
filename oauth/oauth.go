@@ -29,17 +29,13 @@ type Client struct {
 
 // GetAccessToken requests and returns an AccessToken.
 func (client *Client) GetAccessToken() (AccessToken, error) {
-    url := url.URL{Scheme: "http", Host: client.Host, Path: "/oauth/token"}
-    values := map[string]string{"grant_type": "client_credentials"}
-    jsonValue, _ := json.Marshal(values)
-
-    creds := fmt.Sprintf("%s:%s", client.AgentID, client.ClientSecret)
-    auth := fmt.Sprintf("Basic %s", b64.StdEncoding.EncodeToString([]byte(creds)))
     var accessToken AccessToken
+    url := url.URL{Scheme: "http", Host: client.Host, Path: "/oauth/token"}
+    authHeader := client.getAuthHeader()
 
-    req, _ := http.NewRequest("POST", url.String(), bytes.NewBuffer(jsonValue))
+    req, _ := http.NewRequest("POST", url.String(), client.buildGrantTypeData())
 
-    req.Header.Add("Authorization", auth)
+    req.Header.Add("Authorization", authHeader)
     req.Header.Add("Content-Type", "application/json")
 
     resp, err := client.Client.Do(req)
@@ -52,7 +48,20 @@ func (client *Client) GetAccessToken() (AccessToken, error) {
     body, _ := ioutil.ReadAll(resp.Body)
     accessToken = AccessToken{}
     json.Unmarshal(body, &accessToken)
+
     return accessToken, nil
+}
+
+func (client *Client) getAuthHeader() string {
+    creds := fmt.Sprintf("%s:%s", client.AgentID, client.ClientSecret)
+    auth := fmt.Sprintf("Basic %s", b64.StdEncoding.EncodeToString([]byte(creds)))
+    return auth
+}
+
+func (client *Client) buildGrantTypeData() *bytes.Buffer {
+    values := map[string]string{"grant_type": "client_credentials"}
+    jsonValue, _ := json.Marshal(values)
+    return bytes.NewBuffer(jsonValue)
 }
 
 // GetContinuousAccessToken returns a channel over which an AccessToken will be sent.
