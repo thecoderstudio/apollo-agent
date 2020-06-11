@@ -26,6 +26,7 @@ func (client *OAuthClient) GetAccessToken() AccessToken {
     values := map[string]string{"grant_type": "client_credentials"}
     jsonValue, _ := json.Marshal(values)
 
+    // Fake creds
     creds := "73d711e0-923d-42a7-9857-5f3d67d88370:8f5712b5efc5fd711abb3d16925e25a41561e92a041ab4956083d2cfdb5f442e"
 
     auth := fmt.Sprintf("Basic %s", b64.StdEncoding.EncodeToString([]byte(creds)))
@@ -43,13 +44,21 @@ func (client *OAuthClient) GetAccessToken() AccessToken {
         panic(err)
     }
 
-	defer resp.Body.Close()
+    defer resp.Body.Close()
 
     fmt.Println("response Status:", resp.Status)
     body, _ := ioutil.ReadAll(resp.Body)
     accessToken := AccessToken{}
     json.Unmarshal(body, &accessToken)
     return accessToken
+}
+
+func (client *OAuthClient) GetContinuousAccessToken() *chan AccessToken {
+    channel := make(chan AccessToken)
+    go func() {
+        channel <- client.GetAccessToken()
+    }()
+    return &channel
 }
 
 func Create(host string) OAuthClient {
