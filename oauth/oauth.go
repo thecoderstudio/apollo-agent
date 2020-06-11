@@ -59,18 +59,18 @@ func (client *Client) GetAccessToken() AccessToken {
 }
 
 // GetContinuousAccessToken returns a channel over which an AccessToken will be sent.
-// When the AccessToken is close to expiration a new one will get requested and sent.
+// When the AccessToken is 2 minutes to expiration a new one will get requested and sent.
 func (client *Client) GetContinuousAccessToken() *chan AccessToken {
     channel := make(chan AccessToken)
-    go client.keepTokenAlive(&channel)
+    go client.keepTokenAlive(&channel, 120)
     return &channel
 }
 
-func (client *Client) keepTokenAlive(accessTokenChannel *chan AccessToken) {
+func (client *Client) keepTokenAlive(accessTokenChannel *chan AccessToken, offsetInSeconds int) {
     for {
         newAccessToken := client.GetAccessToken()
         *accessTokenChannel <- newAccessToken
-        time.Sleep(time.Duration(newAccessToken.ExpiresIn - 120) * time.Second)
+        time.Sleep(time.Duration(newAccessToken.ExpiresIn - offsetInSeconds) * time.Second)
     }
 }
 

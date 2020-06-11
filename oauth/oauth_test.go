@@ -6,6 +6,7 @@ import (
     "net/http/httptest"
     "strings"
     "testing"
+    "time"
 
     "github.com/stretchr/testify/assert"
 
@@ -19,7 +20,7 @@ func TestGetAccessToken(t *testing.T) {
     token := oauthClient.GetAccessToken()
 
     assert.Equal(t, token.AccessToken, "faketoken")
-    assert.Equal(t, token.ExpiresIn, 3600)
+    assert.Equal(t, token.ExpiresIn, 121)
     assert.Equal(t, token.TokenType, "Bearer")
 }
 
@@ -32,17 +33,33 @@ func createServerMock() *httptest.Server {
 func authTokenMock(writer http.ResponseWriter, request *http.Request) {
     if request.Header.Get("Authorization") == "" {
         errorBody := map[string]string{"detail": "Invalid Authorization header"}
-        errorBodyJson, _ := json.Marshal(errorBody)
+        errorBodyJSON, _ := json.Marshal(errorBody)
         writer.WriteHeader(http.StatusBadRequest)
-        writer.Write(errorBodyJson)
+        writer.Write(errorBodyJSON)
     }
 
     accessToken := &oauth.AccessToken{
         AccessToken:    "faketoken",
-        ExpiresIn:      3600,
+        ExpiresIn:      121,
         TokenType:      "Bearer",
     }
 
-    accessTokenJson, _ := json.Marshal(accessToken)
-    _, _ = writer.Write(accessTokenJson)
+    accessTokenJSON, _ := json.Marshal(accessToken)
+    _, _ = writer.Write(accessTokenJSON)
+}
+
+func TestGetContinuousAccessToken(t *testing.T) {
+    serverMock := createServerMock()
+    defer serverMock.Close()
+    oauthClient := oauth.Create(strings.TrimPrefix(serverMock.URL, "http://"))
+
+    start := time.Now()
+    tokenChannel := oauthClient.GetContinuousAccessToken()
+    firstAccessToken := <-*tokenChannel
+    secondAccessToken := <-*tokenChannel
+    elapsed := time.Since(start)
+
+    assert.NotNil(t, firstAccessToken)
+    assert.NotNil(t, secondAccessToken)
+    assert.LessOrEqual(t, elapsed.Seconds(), float64(2))
 }
