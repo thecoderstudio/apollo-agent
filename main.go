@@ -52,19 +52,25 @@ func setupOAuth() (*chan oauth.AccessToken, oauth.AccessToken) {
 }
 
 func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessToken,
-             interrupt *chan os.Signal) {
+             interruptSignal *chan os.Signal) {
     u := url.URL{Scheme: "ws", Host: opts.Host, Path: "/ws"}
     wsClient := client.Create(new(client.DialWrapper))
-    out, done, errs := wsClient.Listen(u, initialToken, interrupt)
+    interrupt := make(chan struct{})
+    out, done, errs := wsClient.Listen(u, initialToken, &interrupt)
 
     for {
         select {
         case newAccessToken := <-*accessTokenChan:
-            out, done, errs = wsClient.Listen(u, newAccessToken, interrupt)
+            previousInterrupt := interrupt
+            interrupt = make(chan struct{})
+            out, done, errs = wsClient.Listen(u, newAccessToken, &interrupt)
+            close(previousInterrupt)
         case msg := <-out:
             log.Println(msg)
         case err := <-errs:
             log.Println(err)
+        case <-*interruptSignal:
+            close(interrupt)
         case <-done:
             return
         }

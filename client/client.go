@@ -5,7 +5,6 @@ import (
     "fmt"
     "net/http"
     "net/url"
-    "os"
     "time"
 
     "github.com/gorilla/websocket"
@@ -41,7 +40,7 @@ type client struct {
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
 // by closing the interrupt channel.
 func (client *client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
-                             interrupt *chan os.Signal) (<-chan string, <-chan struct{}, <-chan error) {
+                             interrupt *chan struct{}) (<-chan string, <-chan struct{}, <-chan error) {
     out := make(chan string)
     errs := make(chan error)
     done := make(chan struct{})
@@ -104,7 +103,7 @@ func (client *client) awaitMessages(connection *WebsocketConn, out *chan string,
 }
 
 func (client *client) handleEvents(connection *WebsocketConn, doneListening *chan struct{},
-                                   interrupt *chan os.Signal) error {
+                                   interrupt *chan struct{}) error {
     for {
         select {
         case <-*doneListening:

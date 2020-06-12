@@ -4,7 +4,6 @@ import (
     "errors"
     "net/http"
     "net/url"
-    "os"
     "testing"
 
     "github.com/gorilla/websocket"
@@ -22,12 +21,12 @@ type ConnMock struct {
     mock.Mock
 }
 
-func (mocked ConnMock) Close() error {
+func (mocked *ConnMock) Close() error {
     args := mocked.Called()
     return args.Error(0)
 }
 
-func (mocked ConnMock) ReadMessage() (messageType int, p []byte, err error) {
+func (mocked *ConnMock) ReadMessage() (messageType int, p []byte, err error) {
     args := mocked.Called()
 
     var message []byte
@@ -38,7 +37,7 @@ func (mocked ConnMock) ReadMessage() (messageType int, p []byte, err error) {
     return args.Int(0), message, args.Error(2)
 }
 
-func (mocked ConnMock) WriteMessage(messageType int, data []byte) error {
+func (mocked *ConnMock) WriteMessage(messageType int, data []byte) error {
     args := mocked.Called(messageType, data)
     return args.Error(0)
 }
@@ -47,7 +46,7 @@ type DialerMock struct {
     mock.Mock
 }
 
-func (mocked DialerMock) Dial(urlString string, header http.Header) (client.WebsocketConn, *http.Response, error) {
+func (mocked *DialerMock) Dial(urlString string, header http.Header) (client.WebsocketConn, *http.Response, error) {
     args := mocked.Called(urlString, header)
 
     var connection client.WebsocketConn
@@ -68,7 +67,7 @@ type ClientTestSuite struct {
 }
 
 func (suite *ClientTestSuite) TestListenSuccess() {
-    interrupt := make(chan os.Signal, 1)
+    interrupt := make(chan struct{})
 
     mockConn := new(ConnMock)
     mockConn.On("Close").Return(nil)
@@ -94,7 +93,7 @@ func (suite *ClientTestSuite) TestListenSuccess() {
 
 func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
     expectedError := errors.New("test")
-    interrupt := make(chan os.Signal, 1)
+    interrupt := make(chan struct{})
 
     mockConn := new(ConnMock)
     mockConn.On("Close").Return(nil)
@@ -119,7 +118,7 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 
 func (suite *ClientTestSuite) TestConnectionError() {
     expectedError := errors.New("connection error")
-    interrupt := make(chan os.Signal, 1)
+    interrupt := make(chan struct{})
     defer close(interrupt)
 
     mockDialer := new(DialerMock)
@@ -135,7 +134,7 @@ func (suite *ClientTestSuite) TestConnectionError() {
 
 func (suite *ClientTestSuite) TestReadMessageError() {
     expectedError := errors.New("read error")
-    interrupt := make(chan os.Signal, 1)
+    interrupt := make(chan struct{})
     defer close(interrupt)
 
     mockConn := new(ConnMock)
