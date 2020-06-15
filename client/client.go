@@ -2,12 +2,13 @@ package client
 
 import (
     "log"
+    "fmt"
     "net/http"
     "net/url"
     "time"
-    "os"
 
     "github.com/gorilla/websocket"
+    "github.com/thecoderstudio/apollo-agent/oauth"
 )
 
 // WebsocketConn specifies the interface for client connection
@@ -38,7 +39,8 @@ type client struct {
 
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
 // by closing the interrupt channel.
-func (client *client) Listen(endpointURL url.URL, interrupt *chan os.Signal) (<-chan string, <-chan struct{}, <-chan error) {
+func (client *client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
+                             interrupt *chan struct{}) (<-chan string, <-chan struct{}, <-chan error) {
     out := make(chan string)
     errs := make(chan error)
     done := make(chan struct{})
@@ -47,7 +49,7 @@ func (client *client) Listen(endpointURL url.URL, interrupt *chan os.Signal) (<-
         defer close(out)
         defer close(errs)
 
-        connection, err := client.createConnection(endpointURL)
+        connection, err := client.createConnection(endpointURL, accessToken)
         if err != nil {
             log.Println("Connection error")
             errs <- err
@@ -70,10 +72,11 @@ func (client *client) Listen(endpointURL url.URL, interrupt *chan os.Signal) (<-
     return out, done, errs
 }
 
-func (client *client) createConnection(endpointURL url.URL) (WebsocketConn, error) {
+func (client *client) createConnection(endpointURL url.URL, accessToken oauth.AccessToken) (WebsocketConn, error) {
     urlString := endpointURL.String()
     log.Printf("connecting to %s", urlString)
-    connection, _, err := client.dialer.Dial(urlString, nil)
+    authorizationHeader := fmt.Sprintf("%s %s", accessToken.TokenType, accessToken.AccessToken)
+    connection, _, err := client.dialer.Dial(urlString, http.Header{"Authorization": []string{authorizationHeader}})
     return connection, err
 }
 
@@ -99,20 +102,21 @@ func (client *client) awaitMessages(connection *WebsocketConn, out *chan string,
     }
 }
 
-func (client *client) handleEvents(connection *WebsocketConn, doneListening *chan struct{}, interrupt *chan os.Signal) error {
+func (client *client) handleEvents(connection *WebsocketConn, doneListening *chan struct{},
+                                   interrupt *chan struct{}) error {
     for {
         select {
         case <-*doneListening:
             return nil
         case <-*interrupt:
             log.Println("interrupt")
-            err := client.closeConnection(connection, doneListening)
+            err := client.closeConnection(connection)
             return err
         }
     }
 }
 
-func (client *client) closeConnection(connection *WebsocketConn, doneListening *chan struct{}) error {
+func (client *client) closeConnection(connection *WebsocketConn) error {
     conn := *connection
     err := conn.WriteMessage(
         websocket.CloseMessage,
