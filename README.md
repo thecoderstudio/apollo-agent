@@ -43,6 +43,6 @@ or (on Linux and MacOS):
 build/apollo --host <apollo_API_host> --agent-id <your_agent_id> --secret <your_client_secret>
 ```
 
-The agent id and secret given out by the Apollo API.
+The `agent-id` and `secret` are given out by the Apollo API.
 
 Use `--help` for more info about the required and optional arguments.
