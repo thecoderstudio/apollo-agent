@@ -1,4 +1,8 @@
 # Apollo Agent
+![](https://github.com/thecoderstudio/apollo-agent/workflows/Test/badge.svg)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/b07d829e006848719d730e75b3bee7d7)](https://www.codacy.com/gh/thecoderstudio/apollo-agent?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=thecoderstudio/apollo-agent&amp;utm_campaign=Badge_Grade)
+[![codecov](https://codecov.io/gh/thecoderstudio/apollo-agent/branch/develop/graph/badge.svg)](https://codecov.io/gh/thecoderstudio/apollo-agent)
+
 Agent meant to be deployed on a compromised machines to connect back to Apollo.
 
 Apollo is a post-exploitation tool for managing, enumerating and pivotting on
