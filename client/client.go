@@ -11,6 +11,12 @@ import (
     "github.com/thecoderstudio/apollo-agent/oauth"
 )
 
+// Message as received by Apollo
+type Message struct {
+    MessageID   string `json:"message_id"`
+    Message     string `json:"message"`
+}
+
 // WebsocketConn specifies the interface for client connection
 type WebsocketConn interface {
     Close() error

@@ -1,6 +1,7 @@
 package main
 
 import (
+    "encoding/json"
     "log"
     "net/url"
     "os"
@@ -10,6 +11,7 @@ import (
 
     "github.com/thecoderstudio/apollo-agent/client"
     "github.com/thecoderstudio/apollo-agent/oauth"
+    "github.com/thecoderstudio/apollo-agent/shell"
 )
 
 var opts struct {
@@ -66,7 +68,10 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
             out, done, errs = wsClient.Listen(u, newAccessToken, &interrupt)
             close(previousInterrupt)
         case msg := <-out:
-            log.Println(msg)
+            message := client.Message{}
+            json.Unmarshal([]byte(msg), &message)
+            stdout := shell.Execute(message.Message)
+            log.Println(stdout)
         case err := <-errs:
             log.Println(err)
         case <-*interruptSignal:
