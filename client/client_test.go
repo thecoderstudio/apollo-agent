@@ -4,7 +4,6 @@ import (
     "errors"
     "net/http"
     "net/url"
-    "os"
     "testing"
 
     "github.com/gorilla/websocket"
@@ -13,6 +12,7 @@ import (
     "github.com/stretchr/testify/suite"
 
     "github.com/thecoderstudio/apollo-agent/client"
+    "github.com/thecoderstudio/apollo-agent/oauth"
 )
 
 var u = url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
@@ -21,12 +21,12 @@ type ConnMock struct {
     mock.Mock
 }
 
-func (mocked ConnMock) Close() error {
+func (mocked *ConnMock) Close() error {
     args := mocked.Called()
     return args.Error(0)
 }
 
-func (mocked ConnMock) ReadMessage() (messageType int, p []byte, err error) {
+func (mocked *ConnMock) ReadMessage() (messageType int, p []byte, err error) {
     args := mocked.Called()
 
     var message []byte
@@ -37,7 +37,7 @@ func (mocked ConnMock) ReadMessage() (messageType int, p []byte, err error) {
     return args.Int(0), message, args.Error(2)
 }
 
-func (mocked ConnMock) WriteMessage(messageType int, data []byte) error {
+func (mocked *ConnMock) WriteMessage(messageType int, data []byte) error {
     args := mocked.Called(messageType, data)
     return args.Error(0)
 }
@@ -46,7 +46,7 @@ type DialerMock struct {
     mock.Mock
 }
 
-func (mocked DialerMock) Dial(urlString string, header http.Header) (client.WebsocketConn, *http.Response, error) {
+func (mocked *DialerMock) Dial(urlString string, header http.Header) (client.WebsocketConn, *http.Response, error) {
     args := mocked.Called(urlString, header)
 
     var connection client.WebsocketConn
@@ -67,7 +67,7 @@ type ClientTestSuite struct {
 }
 
 func (suite *ClientTestSuite) TestListenSuccess() {
-    interrupt := make(chan os.Signal, 1)
+    interrupt := make(chan struct{})
 
     mockConn := new(ConnMock)
     mockConn.On("Close").Return(nil)
@@ -78,10 +78,10 @@ func (suite *ClientTestSuite) TestListenSuccess() {
     mockConn.On("ReadMessage").Return(0, []byte("test message"), nil)
 
     mockDialer := new(DialerMock)
-    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
+    mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(mockConn, nil, nil)
 
     wsClient := client.Create(mockDialer)
-    out, done, _ := wsClient.Listen(u, &interrupt)
+    out, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &interrupt)
     message := <-out
 
     assert.Equal(suite.T(), message, "test message")
@@ -93,7 +93,7 @@ func (suite *ClientTestSuite) TestListenSuccess() {
 
 func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
     expectedError := errors.New("test")
-    interrupt := make(chan os.Signal, 1)
+    interrupt := make(chan struct{})
 
     mockConn := new(ConnMock)
     mockConn.On("Close").Return(nil)
@@ -104,10 +104,10 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
     mockConn.On("ReadMessage").Return(0, nil, nil)
 
     mockDialer := new(DialerMock)
-    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
+    mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(mockConn, nil, nil)
 
     wsClient := client.Create(mockDialer)
-    out, done, _ := wsClient.Listen(u, &interrupt)
+    out, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &interrupt)
     <-out
 
     close(interrupt)
@@ -118,14 +118,14 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 
 func (suite *ClientTestSuite) TestConnectionError() {
     expectedError := errors.New("connection error")
-    interrupt := make(chan os.Signal, 1)
+    interrupt := make(chan struct{})
     defer close(interrupt)
 
     mockDialer := new(DialerMock)
-    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(nil, nil, expectedError)
+    mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(nil, nil, expectedError)
 
     wsClient := client.Create(mockDialer)
-    _, _, errs := wsClient.Listen(u, &interrupt)
+    _, _, errs := wsClient.Listen(u, oauth.AccessToken{}, &interrupt)
     err := <-errs
 
     mockDialer.AssertExpectations(suite.T())
@@ -134,7 +134,7 @@ func (suite *ClientTestSuite) TestConnectionError() {
 
 func (suite *ClientTestSuite) TestReadMessageError() {
     expectedError := errors.New("read error")
-    interrupt := make(chan os.Signal, 1)
+    interrupt := make(chan struct{})
     defer close(interrupt)
 
     mockConn := new(ConnMock)
@@ -142,10 +142,10 @@ func (suite *ClientTestSuite) TestReadMessageError() {
     mockConn.On("ReadMessage").Return(0, nil, expectedError)
 
     mockDialer := new(DialerMock)
-    mockDialer.On("Dial", u.String(), http.Header(nil)).Return(mockConn, nil, nil)
+    mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(mockConn, nil, nil)
 
     wsClient := client.Create(mockDialer)
-    _, done, errs := wsClient.Listen(u, &interrupt)
+    _, done, errs := wsClient.Listen(u, oauth.AccessToken{}, &interrupt)
     err := <-errs
 
     assert.NotNil(suite.T(), <-done)
