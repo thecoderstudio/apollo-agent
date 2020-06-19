@@ -8,16 +8,14 @@ import (
     "strings"
 
     "github.com/creack/pty"
-
-    "github.com/thecoderstudio/apollo-agent/client"
 )
 
 type chanWriter struct {
 	ch chan string
 }
 
-func newChanWriter() *chanWriter {
-	return &chanWriter{make(chan string)}
+func newChanWriter(ch chan string) *chanWriter {
+    return &chanWriter{ch}
 }
 
 func (w *chanWriter) Chan() <-chan string {
@@ -34,37 +32,59 @@ func (w *chanWriter) Close() error {
 	return nil
 }
 
-var sessions = map[string]*os.File{}
+type PTYSession struct {
+    sessionID string
+    session *os.File
+    out chan string
+}
 
-// Execute allows you to run shell commands on the current system and get their
-// result.
-func Execute(commandMessage client.Message) {
-    toBeExecuted := commandMessage.Message
+func (ptySession *PTYSession) Execute(toBeExecuted string) {
+    log.Println("called")
+    if ptySession.session != nil {
+        log.Println("not nil")
+        ptySession.session.Write([]byte(toBeExecuted))
+    } else {
+        log.Println("nil")
+        ptySession.createNewSession(toBeExecuted)
+    }
+}
+
+func (ptySession *PTYSession) createNewSession(toBeExecuted string) {
     if len(toBeExecuted) == 0 {
+        log.Println("0")
         return
     }
     commandAndArgs := strings.Fields(toBeExecuted)
     log.Println(commandAndArgs)
     cmd := exec.Command(commandAndArgs[0], commandAndArgs[1:]...)
 
-    out := newChanWriter()
-    go func() {
-        for {
-            output := <-out.Chan()
-            log.Println(string(output))
-        }
-    }()
+    chanWriter := newChanWriter(ptySession.out)
 
+    var stderr bytes.Buffer
+    cmd.Stdout = chanWriter
+    cmd.Stderr = &stderr
 
-	var stderr bytes.Buffer
-	cmd.Stdout = out
-	cmd.Stderr = &stderr
-
-    ptySession, err := pty.Start(cmd)
-    ptySession.Write([]byte{4})
+    session, err := pty.Start(cmd)
+    ptySession.session = session
 
     if err != nil {
         log.Println(err)
         log.Println(stderr.String())
     }
+}
+
+func (ptySession *PTYSession) listen() {
+    for {
+        output := <-ptySession.out
+        log.Println(string(output))
+    }
+}
+
+func CreateNewPTY(sessionID string) *PTYSession {
+    ptySession := PTYSession{
+        sessionID: sessionID,
+        out: make(chan string),
+    }
+    go ptySession.listen()
+    return &ptySession
 }

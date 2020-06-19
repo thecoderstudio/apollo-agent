@@ -70,7 +70,8 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
         case msg := <-out:
             message := client.Message{}
             json.Unmarshal([]byte(msg), &message)
-            shell.Execute(message)
+            pty := shell.CreateNewPTY(message.SessionID)
+            pty.Execute(message.Message)
         case err := <-errs:
             log.Println(err)
         case <-*interruptSignal:
