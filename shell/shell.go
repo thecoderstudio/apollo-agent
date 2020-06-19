@@ -13,11 +13,15 @@ import (
 )
 
 type chanWriter struct {
-	Chan chan string
+	ch chan string
 }
 
 func newChanWriter() *chanWriter {
 	return &chanWriter{make(chan string)}
+}
+
+func (w *chanWriter) Chan() <-chan string {
+	return w.ch
 }
 
 func (w *chanWriter) Write(p []byte) (int, error) {
@@ -46,7 +50,7 @@ func Execute(commandMessage client.Message) {
     out := newChanWriter()
     go func() {
         for {
-            output := <-out.Chan
+            output := <-out.Chan()
             log.Println(string(output))
         }
     }()
