@@ -62,6 +62,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
     interrupt := make(chan struct{})
     in := make(chan client.Message)
     defer close(in)
+    defer closePTYs()
 
     out, done, errs := wsClient.Listen(u, initialToken, &in, &interrupt)
 
@@ -102,5 +103,11 @@ func writeOutput(in *chan client.Message, out *chan client.Message) {
     for {
         message := <-*in
         *out <- message
+    }
+}
+
+func closePTYs() {
+    for _, pty := range sessions {
+        pty.Close()
     }
 }

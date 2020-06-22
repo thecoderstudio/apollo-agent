@@ -60,6 +60,14 @@ func (ptySession *PTYSession) listen(session *os.File) {
     }
 }
 
+// Close closes out channel and pty
+func (ptySession *PTYSession) Close() {
+    if ptySession.session != nil {
+        ptySession.session.Close()
+    }
+    close(*ptySession.Out)
+}
+
 // CreateNewPTY creates a new PTYSession injected with the given sessionID and an output channel.
 func CreateNewPTY(sessionID string) *PTYSession {
     out := make(chan client.Message)
