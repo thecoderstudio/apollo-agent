@@ -19,3 +19,17 @@ func TestExecuteEmptyCommand(t *testing.T) {
     pty.Execute("")
     assert.Nil(t, pty.Session())
 }
+
+func TestExecute(t *testing.T) {
+    pty := shell.CreateNewPTY("test")
+    pty.Execute("echo 1")
+
+    outChan := *pty.Out
+    output := <-outChan
+    assert.Contains(t, output.Message, "echo 1")
+    assert.NotNil(t, pty.Session())
+
+    pty.Execute("echo 2")
+    output = <-outChan
+    assert.Contains(t, output.Message, "echo 2")
+}
