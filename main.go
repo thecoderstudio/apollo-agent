@@ -59,10 +59,13 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
              interruptSignal *chan os.Signal) {
     u := url.URL{Scheme: "ws", Host: opts.Host, Path: "/ws"}
     wsClient := client.Create(new(client.DialWrapper))
+
     interrupt := make(chan struct{})
     in := make(chan client.Message)
     defer close(in)
-    defer closePTYs()
+
+    ptyManager := shell.CreateManager(&in)
+    defer ptyManager.Close()
 
     out, done, errs := wsClient.Listen(u, initialToken, &in, &interrupt)
 
@@ -73,8 +76,10 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
             interrupt = make(chan struct{})
             out, done, errs = wsClient.Listen(u, newAccessToken, &in, &interrupt)
             close(previousInterrupt)
-        case msg := <-out:
-            processMessage([]byte(msg), &in)
+        case rawMessage := <-out:
+            message := client.Message{}
+            json.Unmarshal([]byte(rawMessage), &message)
+            ptyManager.Execute(message)
         case err := <-errs:
             log.Println(err)
         case <-*interruptSignal:
@@ -82,32 +87,5 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
         case <-done:
             return
         }
-    }
-}
-
-func processMessage(rawMessage []byte, out *chan client.Message) {
-    message := client.Message{}
-    json.Unmarshal(rawMessage, &message)
-    pty := sessions[message.SessionID]
-
-    if pty == nil {
-        pty = shell.CreateNewPTY(message.SessionID)
-        sessions[message.SessionID] = pty
-    }
-
-    pty.Execute(message.Message)
-    go writeOutput(pty.Out, out)
-}
-
-func writeOutput(in *chan client.Message, out *chan client.Message) {
-    for {
-        message := <-*in
-        *out <- message
-    }
-}
-
-func closePTYs() {
-    for _, pty := range sessions {
-        pty.Close()
     }
 }
