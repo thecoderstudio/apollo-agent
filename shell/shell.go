@@ -9,12 +9,15 @@ import (
     "github.com/thecoderstudio/apollo-agent/client"
 )
 
+// PTYSession is a PTY that allows command execution through PTYSession.Execute while sending output
+// through the PTYSession.Out channel.
 type PTYSession struct {
-    sessionID string
+    SessionID string
     session *os.File
     Out *chan client.Message
 }
 
+// Execute executes toBeExecuted in the pty. Output is written to PTYSession.Out
 func (ptySession *PTYSession) Execute(toBeExecuted string) {
     if toBeExecuted == "" {
         return
@@ -40,17 +43,18 @@ func (ptySession *PTYSession) listen(session *os.File) {
         session.Read(buf)
 
         outMessage := client.Message {
-            SessionID: ptySession.sessionID,
+            SessionID: ptySession.SessionID,
             Message: string(buf),
         }
         *ptySession.Out <- outMessage
     }
 }
 
+// CreateNewPTY creates a new PTYSession injected with the given sessionID and an output channel.
 func CreateNewPTY(sessionID string) *PTYSession {
     out := make(chan client.Message)
     ptySession := PTYSession{
-        sessionID: sessionID,
+        SessionID: sessionID,
         Out: &out,
     }
     return &ptySession
