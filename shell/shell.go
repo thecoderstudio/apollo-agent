@@ -1,11 +1,12 @@
 package shell
 
 import (
-    "bytes"
     "log"
+    "io"
     "os"
     "os/exec"
     "strings"
+    "syscall"
 
     "github.com/creack/pty"
 )
@@ -32,17 +33,43 @@ func (w *chanWriter) Close() error {
 	return nil
 }
 
+type chanReader struct {
+	ch chan string
+}
+
+func newChanReader(ch chan string) *chanReader {
+    return &chanReader{ch}
+}
+
+func (r *chanReader) Chan() <-chan string {
+	return r.ch
+}
+
+func (r *chanReader) Read(p []byte) (int, error) {
+    r.ch <- string(p)
+	return len(p), nil
+}
+
+func (r *chanReader) Close() error {
+	close(r.ch)
+	return nil
+}
+
+
 type PTYSession struct {
     sessionID string
     session *os.File
     out chan string
+    err chan string
+    in *io.Reader
 }
 
 func (ptySession *PTYSession) Execute(toBeExecuted string) {
     log.Println("called")
     if ptySession.session != nil {
         log.Println("not nil")
-        ptySession.session.Write([]byte(toBeExecuted))
+        in := *ptySession.in
+        in.Read([]byte(toBeExecuted))
     } else {
         log.Println("nil")
         ptySession.createNewSession(toBeExecuted)
@@ -58,25 +85,41 @@ func (ptySession *PTYSession) createNewSession(toBeExecuted string) {
     log.Println(commandAndArgs)
     cmd := exec.Command(commandAndArgs[0], commandAndArgs[1:]...)
 
-    chanWriter := newChanWriter(ptySession.out)
+    stdout := newChanWriter(ptySession.out)
+    stderr := newChanWriter(ptySession.err)
 
-    var stderr bytes.Buffer
-    cmd.Stdout = chanWriter
-    cmd.Stderr = &stderr
+    cmd.Stdout = stdout
+    cmd.Stderr = stderr
+    if cmd.SysProcAttr == nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	cmd.SysProcAttr.Setsid = true
+	cmd.SysProcAttr.Setctty = true
 
-    session, err := pty.Start(cmd)
+    session, tty, err := pty.Open()
+
+    cmd.Stdin = tty
+
     ptySession.session = session
+    ptySession.in = &cmd.Stdin
+
+    cmd.Start()
 
     if err != nil {
         log.Println(err)
-        log.Println(stderr.String())
     }
 }
 
 func (ptySession *PTYSession) listen() {
     for {
-        output := <-ptySession.out
-        log.Println(string(output))
+        select {
+            case output := <-ptySession.out:
+                log.Println("output")
+                log.Println(string(output))
+            case err := <-ptySession.err:
+                log.Println("err")
+                log.Println(string(err))
+        }
     }
 }
 
@@ -84,6 +127,7 @@ func CreateNewPTY(sessionID string) *PTYSession {
     ptySession := PTYSession{
         sessionID: sessionID,
         out: make(chan string),
+        err: make(chan string),
     }
     go ptySession.listen()
     return &ptySession

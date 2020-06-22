@@ -59,6 +59,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
     wsClient := client.Create(new(client.DialWrapper))
     interrupt := make(chan struct{})
     out, done, errs := wsClient.Listen(u, initialToken, &interrupt)
+    sessions := map[string] *shell.PTYSession{}
 
     for {
         select {
@@ -70,8 +71,13 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
         case msg := <-out:
             message := client.Message{}
             json.Unmarshal([]byte(msg), &message)
-            pty := shell.CreateNewPTY(message.SessionID)
-            pty.Execute(message.Message)
+            if pty, ok := sessions[message.SessionID]; ok {
+                pty.Execute(message.Message)
+            } else {
+                pty := shell.CreateNewPTY(message.SessionID)
+                pty.Execute(message.Message)
+                sessions[message.SessionID] = pty
+            }
         case err := <-errs:
             log.Println(err)
         case <-*interruptSignal:
