@@ -76,6 +76,8 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
             } else {
                 pty := shell.CreateNewPTY(message.SessionID)
                 pty.Execute(message.Message)
+
+                go writeOutput(pty.Out)
                 sessions[message.SessionID] = pty
             }
         case err := <-errs:
@@ -85,5 +87,12 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
         case <-done:
             return
         }
+    }
+}
+
+func writeOutput(in chan string) {
+    for {
+        message := <-in
+        log.Println(message)
     }
 }
