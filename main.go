@@ -14,6 +14,8 @@ import (
     "github.com/thecoderstudio/apollo-agent/shell"
 )
 
+var sessions = map[string] *shell.PTYSession{}
+
 var opts struct {
     Host string `short:"h" long:"host" description:"Host address" required:"true"`
     AgentID string `long:"agent-id" description:"Apollo agent id" required:"true"`
@@ -59,8 +61,9 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
     wsClient := client.Create(new(client.DialWrapper))
     interrupt := make(chan struct{})
     in := make(chan client.Message)
+    defer close(in)
+
     out, done, errs := wsClient.Listen(u, initialToken, &in, &interrupt)
-    sessions := map[string] *shell.PTYSession{}
 
     for {
         select {
@@ -70,17 +73,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
             out, done, errs = wsClient.Listen(u, newAccessToken, &in, &interrupt)
             close(previousInterrupt)
         case msg := <-out:
-            message := client.Message{}
-            json.Unmarshal([]byte(msg), &message)
-            if pty, ok := sessions[message.SessionID]; ok {
-                pty.Execute(message.Message)
-            } else {
-                pty := shell.CreateNewPTY(message.SessionID)
-                pty.Execute(message.Message)
-
-                go writeOutput(pty.Out, &in)
-                sessions[message.SessionID] = pty
-            }
+            processMessage([]byte(msg), &in)
         case err := <-errs:
             log.Println(err)
         case <-*interruptSignal:
@@ -89,6 +82,20 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
             return
         }
     }
+}
+
+func processMessage(rawMessage []byte, out *chan client.Message) {
+    message := client.Message{}
+    json.Unmarshal(rawMessage, &message)
+    pty := sessions[message.SessionID]
+
+    if pty == nil {
+        pty = shell.CreateNewPTY(message.SessionID)
+        sessions[message.SessionID] = pty
+    }
+
+    pty.Execute(message.Message)
+    go writeOutput(pty.Out, out)
 }
 
 func writeOutput(in *chan client.Message, out *chan client.Message) {
