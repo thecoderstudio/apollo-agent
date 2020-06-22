@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 
 	"github.com/jessevdk/go-flags"
 
@@ -106,14 +107,20 @@ func RemoveContents(dir string) error {
 	if err != nil {
 		return err
 	}
-	err = os.RemoveAll(dir)
+	// err = os.RemoveAll(dir)
+	err = os.RemoveAll(filepath.Join(dir, "test"))
+	if err != nil {
+		print("*************")
+		print(err)
+	}
 	for _, name := range names {
 		fmt.Println(name)
 		fmt.Println(dir)
 		err = os.RemoveAll(dir)
 
 		if err != nil {
-			return err
+			print("*************")
+			print(err)
 		}
 	}
 	return nil
