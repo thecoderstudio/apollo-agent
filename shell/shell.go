@@ -17,13 +17,18 @@ type PTYSession struct {
     Out *chan client.Message
 }
 
-// Execute executes toBeExecuted in the pty. Output is written to PTYSession.Out
-func (ptySession *PTYSession) Execute(toBeExecuted string) error {
-    if toBeExecuted == "" {
-        return nil
-    }
+// Session returns the inner pty.
+func (ptySession *PTYSession) Session() *os.File {
+    return ptySession.session
+}
 
+// Execute executes toBeExecuted in the pty. Output is written to PTYSession.Out.
+func (ptySession *PTYSession) Execute(toBeExecuted string) error {
     var err error
+
+    if toBeExecuted == "" {
+        return err
+    }
 
     if ptySession.session == nil {
         err = ptySession.createNewSession()

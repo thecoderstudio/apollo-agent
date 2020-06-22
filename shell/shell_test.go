@@ -13,3 +13,9 @@ func TestCreateNewPTY(t *testing.T) {
     assert.Equal(t, pty.SessionID, "test")
     assert.NotNil(t, pty.Out)
 }
+
+func TestExecuteEmptyCommand(t *testing.T) {
+    pty := shell.CreateNewPTY("test")
+    pty.Execute("")
+    assert.Nil(t, pty.Session())
+}
