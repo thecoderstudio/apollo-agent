@@ -5,12 +5,14 @@ import (
     "os/exec"
 
     "github.com/creack/pty"
+
+    "github.com/thecoderstudio/apollo-agent/client"
 )
 
 type PTYSession struct {
     sessionID string
     session *os.File
-    Out chan string
+    Out *chan client.Message
 }
 
 func (ptySession *PTYSession) Execute(toBeExecuted string) {
@@ -36,14 +38,20 @@ func (ptySession *PTYSession) listen(session *os.File) {
     for {
         buf := make([]byte, 512)
         session.Read(buf)
-        ptySession.Out <- string(buf)
+
+        outMessage := client.Message {
+            SessionID: ptySession.sessionID,
+            Message: string(buf),
+        }
+        *ptySession.Out <- outMessage
     }
 }
 
 func CreateNewPTY(sessionID string) *PTYSession {
+    out := make(chan client.Message)
     ptySession := PTYSession{
         sessionID: sessionID,
-        Out: make(chan string),
+        Out: &out,
     }
     return &ptySession
 }

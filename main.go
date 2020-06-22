@@ -58,7 +58,8 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
     u := url.URL{Scheme: "ws", Host: opts.Host, Path: "/ws"}
     wsClient := client.Create(new(client.DialWrapper))
     interrupt := make(chan struct{})
-    out, done, errs := wsClient.Listen(u, initialToken, &interrupt)
+    in := make(chan client.Message)
+    out, done, errs := wsClient.Listen(u, initialToken, &in, &interrupt)
     sessions := map[string] *shell.PTYSession{}
 
     for {
@@ -66,7 +67,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
         case newAccessToken := <-*accessTokenChan:
             previousInterrupt := interrupt
             interrupt = make(chan struct{})
-            out, done, errs = wsClient.Listen(u, newAccessToken, &interrupt)
+            out, done, errs = wsClient.Listen(u, newAccessToken, &in, &interrupt)
             close(previousInterrupt)
         case msg := <-out:
             message := client.Message{}
@@ -77,7 +78,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
                 pty := shell.CreateNewPTY(message.SessionID)
                 pty.Execute(message.Message)
 
-                go writeOutput(pty.Out)
+                go writeOutput(pty.Out, &in)
                 sessions[message.SessionID] = pty
             }
         case err := <-errs:
@@ -90,9 +91,9 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
     }
 }
 
-func writeOutput(in chan string) {
+func writeOutput(in *chan client.Message, out *chan client.Message) {
     for {
-        message := <-in
-        log.Println(message)
+        message := <-*in
+        *out <- message
     }
 }

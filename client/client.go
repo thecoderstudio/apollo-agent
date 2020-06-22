@@ -1,6 +1,7 @@
 package client
 
 import (
+    "encoding/json"
     "log"
     "fmt"
     "net/http"
@@ -46,7 +47,7 @@ type client struct {
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
 // by closing the interrupt channel.
 func (client *client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
-                             interrupt *chan struct{}) (<-chan string, <-chan struct{}, <-chan error) {
+                             in *chan Message, interrupt *chan struct{}) (<-chan string, <-chan struct{}, <-chan error) {
     out := make(chan string)
     errs := make(chan error)
     done := make(chan struct{})
@@ -68,7 +69,7 @@ func (client *client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
         doneListening := make(chan struct{})
 
         go client.awaitMessages(&connection, &out, &errs, &done, &doneListening)
-        err = client.handleEvents(&connection, &doneListening, interrupt)
+        err = client.handleEvents(&connection, in, &doneListening, interrupt)
 
         connection.Close()
         close(done)
@@ -108,12 +109,17 @@ func (client *client) awaitMessages(connection *WebsocketConn, out *chan string,
     }
 }
 
-func (client *client) handleEvents(connection *WebsocketConn, doneListening *chan struct{},
+func (client *client) handleEvents(connection *WebsocketConn, in *chan Message,
+                                   doneListening *chan struct{},
                                    interrupt *chan struct{}) error {
     for {
         select {
         case <-*doneListening:
             return nil
+        case message := <-*in:
+            conn := *connection
+            jsonMessage, _ := json.Marshal(message)
+            conn.WriteMessage(websocket.TextMessage, jsonMessage)
         case <-*interrupt:
             log.Println("interrupt")
             err := client.closeConnection(connection)
