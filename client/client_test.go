@@ -1,6 +1,7 @@
 package client_test
 
 import (
+    "encoding/json"
     "errors"
     "net/http"
     "net/url"
@@ -159,6 +160,43 @@ func (suite *ClientTestSuite) TestReadMessageError() {
     assert.NotNil(suite.T(), <-done)
     mockConn.AssertExpectations(suite.T())
     assert.EqualError(suite.T(), err, "read error")
+}
+
+func (suite *ClientTestSuite) TestWriteMessage() {
+    interrupt := make(chan struct{})
+    in := make(chan client.Message)
+    defer close(in)
+
+    testMessage := client.Message {
+        SessionID: "test",
+        Message: "test",
+    }
+    jsonMessage, _ := json.Marshal(testMessage)
+
+    mockConn := new(ConnMock)
+    mockConn.On("Close").Return(nil)
+    mockConn.On(
+        "WriteMessage",
+        websocket.CloseMessage,
+        websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")).Return(nil)
+    mockConn.On(
+        "WriteMessage",
+        websocket.TextMessage,
+        jsonMessage).Return(nil)
+
+    mockDialer := new(DialerMock)
+    mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(mockConn, nil, nil)
+
+    wsClient := client.Create(mockDialer)
+    _, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+
+    in <- testMessage
+
+    close(interrupt)
+
+    assert.NotNil(suite.T(), <-done)
+    mockConn.AssertExpectations(suite.T())
+
 }
 
 func TestClientSuite(t *testing.T) {
