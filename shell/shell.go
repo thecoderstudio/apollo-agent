@@ -18,23 +18,28 @@ type PTYSession struct {
 }
 
 // Execute executes toBeExecuted in the pty. Output is written to PTYSession.Out
-func (ptySession *PTYSession) Execute(toBeExecuted string) {
+func (ptySession *PTYSession) Execute(toBeExecuted string) error {
     if toBeExecuted == "" {
-        return
+        return nil
     }
+
+    var err error
 
     if ptySession.session == nil {
-        ptySession.createNewSession()
+        err = ptySession.createNewSession()
     }
-    ptySession.session.Write([]byte(toBeExecuted))
+    _, err = ptySession.session.Write([]byte(toBeExecuted))
+    return err
 }
 
-func (ptySession *PTYSession) createNewSession() {
+func (ptySession *PTYSession) createNewSession() error {
     cmd := exec.Command("/bin/bash")
-    session, _ := pty.Start(cmd)
+    session, err := pty.Start(cmd)
 
     ptySession.session = session
     go ptySession.listen(ptySession.session)
+
+    return err
 }
 
 func (ptySession *PTYSession) listen(session *os.File) {
