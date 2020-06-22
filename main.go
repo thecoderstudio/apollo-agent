@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -72,7 +73,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 			if message.Message == "self destruct" {
 				err := removeAgentDirectory()
 				if err != nil {
-					// return error to apollo
+					fmt.Println("error removing directory:", err)
 				}
 				return
 			}
@@ -91,14 +92,12 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 func removeAgentDirectory() error {
 	path, err := os.Getwd()
 	if err != nil {
-		log.Println(err)
 		return err
 	}
+	err = removeDirectory(path)
+	return err
+}
 
-	err = os.RemoveAll(path)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	return nil
+func removeDirectory(path string) error {
+	return os.RemoveAll(path)
 }
