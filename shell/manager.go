@@ -41,5 +41,8 @@ func (manager *PTYManager) Close() {
 
 // CreateManager creates a PTYManager with the required out channel.
 func CreateManager(out *chan client.Message) PTYManager {
-    return PTYManager { out: out }
+    return PTYManager { 
+        sessions: map[string]*PTYSession{},
+        out: out,
+    }
 }
