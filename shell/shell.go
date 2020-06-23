@@ -14,12 +14,18 @@ import (
 type PTYSession struct {
     SessionID string
     session *os.File
-    Out *chan client.Message
+    out *chan client.Message
 }
 
 // Session returns the inner pty.
 func (ptySession *PTYSession) Session() *os.File {
     return ptySession.session
+}
+
+// Out returns a read-only channel used for communicating output to command
+// execution in the PTY.
+func (ptySession *PTYSession) Out() <-chan client.Message {
+    return *ptySession.out
 }
 
 // Execute executes toBeExecuted in the pty. Output is written to PTYSession.Out.
@@ -56,7 +62,7 @@ func (ptySession *PTYSession) listen(session *os.File) {
             SessionID: ptySession.SessionID,
             Message: string(buf),
         }
-        *ptySession.Out <- outMessage
+        *ptySession.out <- outMessage
     }
 }
 
@@ -65,7 +71,7 @@ func (ptySession *PTYSession) Close() {
     if ptySession.session != nil {
         ptySession.session.Close()
     }
-    close(*ptySession.Out)
+    close(*ptySession.out)
 }
 
 // CreateNewPTY creates a new PTYSession injected with the given sessionID and an output channel.
@@ -73,7 +79,7 @@ func CreateNewPTY(sessionID string) *PTYSession {
     out := make(chan client.Message)
     ptySession := PTYSession{
         SessionID: sessionID,
-        Out: &out,
+        out: &out,
     }
     return &ptySession
 }

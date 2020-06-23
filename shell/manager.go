@@ -19,13 +19,14 @@ func (manager *PTYManager) Execute(message client.Message) {
     if pty == nil {
         pty = CreateNewPTY(message.SessionID)
         manager.sessions[message.SessionID] = pty
-        go manager.writeOutput(pty.Out)
+        out := pty.Out()
+        go manager.writeOutput(&out)
     }
 
     pty.Execute(message.Message)
 }
 
-func (manager *PTYManager) writeOutput(in *chan client.Message) {
+func (manager *PTYManager) writeOutput(in *<-chan client.Message) {
     for {
         message := <-*in
         *manager.out <- message
