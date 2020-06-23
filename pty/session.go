@@ -1,6 +1,7 @@
 package pty
 
 import (
+    "errors"
     "os"
     "os/exec"
 
@@ -15,6 +16,7 @@ type Session struct {
     SessionID string
     session *os.File
     out *chan client.Message
+    closed bool
 }
 
 // Session returns the inner pty.
@@ -31,6 +33,10 @@ func (ptySession *Session) Out() <-chan client.Message {
 // Execute executes toBeExecuted in the pty. Output is written to Session.Out.
 func (ptySession *Session) Execute(toBeExecuted string) error {
     var err error
+
+    if ptySession.closed {
+        return errors.New("Session is closed, please create a new session.")
+    }
 
     if toBeExecuted == "" {
         return err
@@ -54,32 +60,37 @@ func (ptySession *Session) createNewSession() error {
 }
 
 func (ptySession *Session) listen(session *os.File) {
+    buf := make([]byte, 512)
+
     for {
-        buf := make([]byte, 512)
         session.Read(buf)
 
         outMessage := client.Message {
             SessionID: ptySession.SessionID,
             Message: string(buf),
         }
-        *ptySession.out <- outMessage
+        if !ptySession.closed {
+            *ptySession.out <- outMessage
+        }
     }
 }
 
 // Close closes out channel and pty
 func (ptySession *Session) Close() {
+    ptySession.closed = true
     if ptySession.session != nil {
         ptySession.session.Close()
     }
     close(*ptySession.out)
 }
 
-// CreateSession creates a new Session injected with the given sessionID and an output channel.
+// CreateSession creates a new Session injected with the given sessionID and defaults.
 func CreateSession(sessionID string) *Session {
     out := make(chan client.Message)
     ptySession := Session{
         SessionID: sessionID,
         out: &out,
+        closed: false,
     }
     return &ptySession
 }

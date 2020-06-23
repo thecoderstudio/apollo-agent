@@ -39,3 +39,10 @@ func TestExecute(t *testing.T) {
     output = <-outChan
     assert.Contains(t, output.Message, "echo 2")
 }
+
+func TestExecuteOnClosed(t *testing.T) {
+    pty := pty.CreateSession("test")
+    pty.Close()
+    err := pty.Execute("echo 1")
+    assert.EqualError(t, err, "Session is closed, please create a new session.")
+}
