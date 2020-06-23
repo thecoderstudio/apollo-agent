@@ -5,7 +5,7 @@ import (
 )
 
 // Manager helps managing multiple PTY sessions by finding or creating the
-// correct session based on Message.SessionID and handling execution.
+// correct session based on Message.ConnectionID and handling execution.
 type Manager struct {
     sessions map[string]*Session
     out *chan client.Message
@@ -14,11 +14,11 @@ type Manager struct {
 // Execute executes the given command in a PTY session, reusing a session if
 // if already exists.
 func (manager *Manager) Execute(message client.Message) {
-    pty := manager.sessions[message.SessionID]
+    pty := manager.sessions[message.ConnectionID]
 
     if pty == nil {
-        pty = CreateSession(message.SessionID)
-        manager.sessions[message.SessionID] = pty
+        pty = CreateSession(message.ConnectionID)
+        manager.sessions[message.ConnectionID] = pty
         out := pty.Out()
         go manager.writeOutput(&out)
     }

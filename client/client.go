@@ -14,7 +14,7 @@ import (
 
 // Message as received by Apollo
 type Message struct {
-    SessionID   string `json:"session_id"`
+    ConnectionID   string `json:"connection_id"`
     Message     string `json:"message"`
 }
 

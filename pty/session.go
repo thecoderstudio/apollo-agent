@@ -66,7 +66,7 @@ func (ptySession *Session) listen(session *os.File) {
         session.Read(buf)
 
         outMessage := client.Message {
-            SessionID: ptySession.SessionID,
+            ConnectionID: ptySession.SessionID,
             Message: string(buf),
         }
         if !ptySession.closed {

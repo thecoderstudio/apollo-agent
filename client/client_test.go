@@ -168,7 +168,7 @@ func (suite *ClientTestSuite) TestWriteMessage() {
     defer close(in)
 
     testMessage := client.Message {
-        SessionID: "test",
+        ConnectionID: "test",
         Message: "test",
     }
     jsonMessage, _ := json.Marshal(testMessage)

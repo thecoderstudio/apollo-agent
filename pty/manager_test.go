@@ -23,13 +23,13 @@ func TestManagerExecute(t *testing.T) {
     manager := pty.CreateManager(&out)
 
     manager.Execute(client.Message {
-        SessionID: "test",
+        ConnectionID: "test",
         Message: "echo 1",
     })
     first := <-out
 
     manager.Execute(client.Message {
-        SessionID: "test",
+        ConnectionID: "test",
         Message: "echo 2",
     })
     second := <-out
