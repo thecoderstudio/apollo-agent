@@ -1,23 +1,23 @@
-package shell
+package pty
 
 import (
     "github.com/thecoderstudio/apollo-agent/client"
 )
 
-// PTYManager helps managing multiple PTY sessions by finding or creating the
+// Manager helps managing multiple PTY sessions by finding or creating the
 // correct session based on Message.SessionID and handling execution.
-type PTYManager struct {
-    sessions map[string]*PTYSession
+type Manager struct {
+    sessions map[string]*Session
     out *chan client.Message
 }
 
 // Execute executes the given command in a PTY session, reusing a session if
 // if already exists.
-func (manager *PTYManager) Execute(message client.Message) {
+func (manager *Manager) Execute(message client.Message) {
     pty := manager.sessions[message.SessionID]
 
     if pty == nil {
-        pty = CreateNewPTY(message.SessionID)
+        pty = CreateSession(message.SessionID)
         manager.sessions[message.SessionID] = pty
         out := pty.Out()
         go manager.writeOutput(&out)
@@ -26,7 +26,7 @@ func (manager *PTYManager) Execute(message client.Message) {
     pty.Execute(message.Message)
 }
 
-func (manager *PTYManager) writeOutput(in *<-chan client.Message) {
+func (manager *Manager) writeOutput(in *<-chan client.Message) {
     for {
         message := <-*in
         *manager.out <- message
@@ -34,16 +34,16 @@ func (manager *PTYManager) writeOutput(in *<-chan client.Message) {
 }
 
 // Close closes all sessions.
-func (manager *PTYManager) Close() {
+func (manager *Manager) Close() {
     for _, pty := range manager.sessions {
         pty.Close()
     }
 }
 
-// CreateManager creates a PTYManager with the required out channel.
-func CreateManager(out *chan client.Message) PTYManager {
-    return PTYManager { 
-        sessions: map[string]*PTYSession{},
+// CreateManager creates a Manager with the required out channel.
+func CreateManager(out *chan client.Message) Manager {
+    return Manager { 
+        sessions: map[string]*Session{},
         out: out,
     }
 }

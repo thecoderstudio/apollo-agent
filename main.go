@@ -11,10 +11,8 @@ import (
 
     "github.com/thecoderstudio/apollo-agent/client"
     "github.com/thecoderstudio/apollo-agent/oauth"
-    "github.com/thecoderstudio/apollo-agent/shell"
+    "github.com/thecoderstudio/apollo-agent/pty"
 )
-
-var sessions = map[string] *shell.PTYSession{}
 
 var opts struct {
     Host string `short:"h" long:"host" description:"Host address" required:"true"`
@@ -64,7 +62,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
     in := make(chan client.Message)
     defer close(in)
 
-    ptyManager := shell.CreateManager(&in)
+    ptyManager := pty.CreateManager(&in)
     defer ptyManager.Close()
 
     out, done, errs := wsClient.Listen(u, initialToken, &in, &interrupt)

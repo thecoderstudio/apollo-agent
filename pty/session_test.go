@@ -1,23 +1,23 @@
-package shell_test
+package pty_test
 
 import (
     "testing"
 
     "github.com/stretchr/testify/assert"
 
-    "github.com/thecoderstudio/apollo-agent/shell"
+    "github.com/thecoderstudio/apollo-agent/pty"
 )
 
-func TestCreateNewPTY(t *testing.T) {
-    pty := shell.CreateNewPTY("test")
+func TestCreateSession(t *testing.T) {
+    pty := pty.CreateSession("test")
     defer pty.Close()
 
     assert.Equal(t, pty.SessionID, "test")
-    assert.NotNil(t, pty.Out)
+    assert.NotNil(t, pty.Out())
 }
 
 func TestExecuteEmptyCommand(t *testing.T) {
-    pty := shell.CreateNewPTY("test")
+    pty := pty.CreateSession("test")
     defer pty.Close()
 
     pty.Execute("")
@@ -25,12 +25,12 @@ func TestExecuteEmptyCommand(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
-    pty := shell.CreateNewPTY("test")
+    pty := pty.CreateSession("test")
     defer pty.Close()
 
     pty.Execute("echo 1")
 
-    outChan := *pty.Out
+    outChan := pty.Out()
     output := <-outChan
     assert.Contains(t, output.Message, "echo 1")
     assert.NotNil(t, pty.Session())
