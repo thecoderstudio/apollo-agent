@@ -47,8 +47,8 @@ type client struct {
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
 // by closing the interrupt channel.
 func (client *client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
-                             in *chan Message, interrupt *chan struct{}) (<-chan string, <-chan struct{}, <-chan error) {
-    out := make(chan string)
+                             in *chan Message, interrupt *chan struct{}) (<-chan Message, <-chan struct{}, <-chan error) {
+    out := make(chan Message)
     errs := make(chan error)
     done := make(chan struct{})
 
@@ -87,7 +87,7 @@ func (client *client) createConnection(endpointURL url.URL, accessToken oauth.Ac
     return connection, err
 }
 
-func (client *client) awaitMessages(connection *WebsocketConn, out *chan string, errs *chan error, done, doneListening *chan struct{}) {
+func (client *client) awaitMessages(connection *WebsocketConn, out *chan Message, errs *chan error, done, doneListening *chan struct{}) {
     defer close(*doneListening)
     ticker := time.NewTicker(time.Second)
     defer ticker.Stop()
@@ -98,13 +98,15 @@ func (client *client) awaitMessages(connection *WebsocketConn, out *chan string,
         case <-*done:
             return
         case <-ticker.C:
-            _, message, err := conn.ReadMessage()
+            _, rawMessage, err := conn.ReadMessage()
             if err != nil {
                 log.Println("read error:", err)
                 *errs <- err
                 return
             }
-            *out <- string(message)
+            message := Message{}
+            json.Unmarshal([]byte(rawMessage), &message)
+            *out <- message
         }
     }
 }

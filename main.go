@@ -74,9 +74,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
             interrupt = make(chan struct{})
             out, done, errs = wsClient.Listen(u, newAccessToken, &in, &interrupt)
             close(previousInterrupt)
-        case rawMessage := <-out:
-            message := client.Message{}
-            json.Unmarshal([]byte(rawMessage), &message)
+        case message := <-out:
             ptyManager.Execute(message)
         case err := <-errs:
             log.Println(err)
