@@ -18,7 +18,7 @@ type Message struct {
 	Message      string `json:"message"`
 }
 
-// Conn specifies the interface for client connection
+// Connection specifies the interface for client connection
 type Connection interface {
 	Close() error
 	ReadMessage() (int, []byte, error)
@@ -40,6 +40,7 @@ func (wrapper DialWrapper) Dial(urlString string, header http.Header) (Connectio
 	return websocket.DefaultDialer.Dial(urlString, header)
 }
 
+// Client is used to connect over the WebSocket protocol and receive as well as send messages.
 type Client struct {
 	dialer Dialer
 }
@@ -144,7 +145,7 @@ func (client *Client) closeConnection(connection *Connection) error {
 	return nil
 }
 
-// Create is the factory to create a properly instantiated client.
+// CreateClient is the factory to create a properly instantiated client.
 func CreateClient(dialer Dialer) Client {
 	return Client{dialer: dialer}
 }
