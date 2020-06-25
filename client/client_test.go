@@ -78,7 +78,7 @@ func (suite *ClientTestSuite) TestListenSuccess() {
         "WriteMessage",
         websocket.CloseMessage,
         websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")).Return(nil)
-    mockConn.On("ReadMessage").Return(0, []byte("test message"), nil)
+    mockConn.On("ReadMessage").Return(0, []byte("{\"message\": \"test message\"}"), nil)
 
     mockDialer := new(DialerMock)
     mockDialer.On("Dial", u.String(), http.Header{"Authorization":[]string{" "}}).Return(mockConn, nil, nil)
@@ -87,7 +87,7 @@ func (suite *ClientTestSuite) TestListenSuccess() {
     out, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
     message := <-out
 
-    assert.Equal(suite.T(), message, "test message")
+    assert.Equal(suite.T(), "test message", message.Message)
 
     close(interrupt)
 
