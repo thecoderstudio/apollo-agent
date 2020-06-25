@@ -8,9 +8,9 @@ import (
 
 	"github.com/jessevdk/go-flags"
 
-	"github.com/thecoderstudio/apollo-agent/client"
 	"github.com/thecoderstudio/apollo-agent/oauth"
 	"github.com/thecoderstudio/apollo-agent/pty"
+	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
 var opts struct {
@@ -55,10 +55,10 @@ func setupOAuth() (*chan oauth.AccessToken, oauth.AccessToken) {
 func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessToken,
 	interruptSignal *chan os.Signal) {
 	u := url.URL{Scheme: "ws", Host: opts.Host, Path: "/ws"}
-	wsClient := client.Create(new(client.DialWrapper))
+	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
 
 	interrupt := make(chan struct{})
-	in := make(chan client.Message)
+	in := make(chan websocket.Message)
 	defer close(in)
 
 	ptyManager := pty.CreateManager(&in)

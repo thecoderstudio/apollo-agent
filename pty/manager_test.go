@@ -5,12 +5,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/thecoderstudio/apollo-agent/client"
 	"github.com/thecoderstudio/apollo-agent/pty"
+	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
 func TestCreateManager(t *testing.T) {
-	out := make(chan client.Message)
+	out := make(chan websocket.Message)
 	manager := pty.CreateManager(&out)
 
 	assert.NotNil(t, manager)
@@ -19,16 +19,16 @@ func TestCreateManager(t *testing.T) {
 }
 
 func TestManagerExecute(t *testing.T) {
-	out := make(chan client.Message)
+	out := make(chan websocket.Message)
 	manager := pty.CreateManager(&out)
 
-	manager.Execute(client.Message{
+	manager.Execute(websocket.Message{
 		ConnectionID: "test",
 		Message:      "echo 1",
 	})
 	first := <-out
 
-	manager.Execute(client.Message{
+	manager.Execute(websocket.Message{
 		ConnectionID: "test",
 		Message:      "echo 2",
 	})

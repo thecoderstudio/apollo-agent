@@ -7,7 +7,7 @@ import (
 
 	"github.com/creack/pty"
 
-	"github.com/thecoderstudio/apollo-agent/client"
+	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
 // Session is a PTY that allows command execution through Session.Execute while sending output
@@ -15,7 +15,7 @@ import (
 type Session struct {
 	SessionID string
 	session   *os.File
-	out       *chan client.Message
+	out       *chan websocket.Message
 	closed    bool
 }
 
@@ -26,7 +26,7 @@ func (ptySession *Session) Session() *os.File {
 
 // Out returns a read-only channel used for communicating output to command
 // execution in the PTY.
-func (ptySession *Session) Out() <-chan client.Message {
+func (ptySession *Session) Out() <-chan websocket.Message {
 	return *ptySession.out
 }
 
@@ -64,7 +64,7 @@ func (ptySession *Session) listen(session *os.File) {
 		buf := make([]byte, 512)
 		session.Read(buf)
 
-		outMessage := client.Message{
+		outMessage := websocket.Message{
 			ConnectionID: ptySession.SessionID,
 			Message:      string(buf),
 		}
@@ -85,7 +85,7 @@ func (ptySession *Session) Close() {
 
 // CreateSession creates a new Session injected with the given sessionID and defaults.
 func CreateSession(sessionID string) *Session {
-	out := make(chan client.Message)
+	out := make(chan websocket.Message)
 	ptySession := Session{
 		SessionID: sessionID,
 		out:       &out,

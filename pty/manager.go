@@ -1,19 +1,19 @@
 package pty
 
 import (
-	"github.com/thecoderstudio/apollo-agent/client"
+	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
 // Manager helps managing multiple PTY sessions by finding or creating the
 // correct session based on Message.ConnectionID and handling execution.
 type Manager struct {
 	sessions map[string]*Session
-	out      *chan client.Message
+	out      *chan websocket.Message
 }
 
 // Execute executes the given command in a PTY session, reusing a session if
 // if already exists.
-func (manager *Manager) Execute(message client.Message) {
+func (manager *Manager) Execute(message websocket.Message) {
 	pty := manager.sessions[message.ConnectionID]
 
 	if pty == nil {
@@ -26,7 +26,7 @@ func (manager *Manager) Execute(message client.Message) {
 	pty.Execute(message.Message)
 }
 
-func (manager *Manager) writeOutput(in *<-chan client.Message) {
+func (manager *Manager) writeOutput(in *<-chan websocket.Message) {
 	for {
 		message := <-*in
 		*manager.out <- message
@@ -41,7 +41,7 @@ func (manager *Manager) Close() {
 }
 
 // CreateManager creates a Manager with the required out channel.
-func CreateManager(out *chan client.Message) Manager {
+func CreateManager(out *chan websocket.Message) Manager {
 	return Manager{
 		sessions: map[string]*Session{},
 		out:      out,

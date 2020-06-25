@@ -1,4 +1,4 @@
-package client
+package websocket
 
 import (
 	"encoding/json"
@@ -18,17 +18,17 @@ type Message struct {
 	Message      string `json:"message"`
 }
 
-// WebsocketConn specifies the interface for client connection
-type WebsocketConn interface {
+// Conn specifies the interface for client connection
+type Connection interface {
 	Close() error
 	ReadMessage() (int, []byte, error)
 	WriteMessage(int, []byte) error
 }
 
 // Dialer should be used to dial TCP connections returning a connection
-// that fits the expected WebsocketConn interface.
+// that fits the expected Connection interface.
 type Dialer interface {
-	Dial(string, http.Header) (WebsocketConn, *http.Response, error)
+	Dial(string, http.Header) (Connection, *http.Response, error)
 }
 
 // DialWrapper wraps the websocket.DefaultDialer to transform returned types
@@ -36,17 +36,17 @@ type Dialer interface {
 type DialWrapper struct{}
 
 // Dial wraps de default Dial to return an interface instead of a struct.
-func (wrapper DialWrapper) Dial(urlString string, header http.Header) (WebsocketConn, *http.Response, error) {
+func (wrapper DialWrapper) Dial(urlString string, header http.Header) (Connection, *http.Response, error) {
 	return websocket.DefaultDialer.Dial(urlString, header)
 }
 
-type client struct {
+type Client struct {
 	dialer Dialer
 }
 
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
 // by closing the interrupt channel.
-func (client *client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
+func (client *Client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
 	in *chan Message, interrupt *chan struct{}) (<-chan Message, <-chan struct{}, <-chan error) {
 	out := make(chan Message)
 	errs := make(chan error)
@@ -79,7 +79,7 @@ func (client *client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
 	return out, done, errs
 }
 
-func (client *client) createConnection(endpointURL url.URL, accessToken oauth.AccessToken) (WebsocketConn, error) {
+func (client *Client) createConnection(endpointURL url.URL, accessToken oauth.AccessToken) (Connection, error) {
 	urlString := endpointURL.String()
 	log.Printf("connecting to %s", urlString)
 	authorizationHeader := fmt.Sprintf("%s %s", accessToken.TokenType, accessToken.AccessToken)
@@ -87,7 +87,7 @@ func (client *client) createConnection(endpointURL url.URL, accessToken oauth.Ac
 	return connection, err
 }
 
-func (client *client) awaitMessages(connection *WebsocketConn, out *chan Message, errs *chan error, done, doneListening *chan struct{}) {
+func (client *Client) awaitMessages(connection *Connection, out *chan Message, errs *chan error, done, doneListening *chan struct{}) {
 	defer close(*doneListening)
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -111,7 +111,7 @@ func (client *client) awaitMessages(connection *WebsocketConn, out *chan Message
 	}
 }
 
-func (client *client) handleEvents(connection *WebsocketConn, in *chan Message,
+func (client *Client) handleEvents(connection *Connection, in *chan Message,
 	doneListening *chan struct{},
 	interrupt *chan struct{}) error {
 	for {
@@ -130,7 +130,7 @@ func (client *client) handleEvents(connection *WebsocketConn, in *chan Message,
 	}
 }
 
-func (client *client) closeConnection(connection *WebsocketConn) error {
+func (client *Client) closeConnection(connection *Connection) error {
 	conn := *connection
 	err := conn.WriteMessage(
 		websocket.CloseMessage,
@@ -145,6 +145,6 @@ func (client *client) closeConnection(connection *WebsocketConn) error {
 }
 
 // Create is the factory to create a properly instantiated client.
-func Create(dialer Dialer) client {
-	return client{dialer: dialer}
+func CreateClient(dialer Dialer) Client {
+	return Client{dialer: dialer}
 }
