@@ -44,5 +44,5 @@ func TestExecuteOnClosed(t *testing.T) {
     pty := pty.CreateSession("test")
     pty.Close()
     err := pty.Execute("echo 1")
-    assert.EqualError(t, err, "Session is closed, please create a new session.")
+    assert.EqualError(t, err, "session is closed, please create a new session")
 }

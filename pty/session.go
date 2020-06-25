@@ -35,7 +35,7 @@ func (ptySession *Session) Execute(toBeExecuted string) error {
     var err error
 
     if ptySession.closed {
-        return errors.New("Session is closed, please create a new session.")
+        return errors.New("session is closed, please create a new session")
     }
 
     if toBeExecuted == "" {
@@ -60,9 +60,8 @@ func (ptySession *Session) createNewSession() error {
 }
 
 func (ptySession *Session) listen(session *os.File) {
-    buf := make([]byte, 512)
-
     for {
+        buf := make([]byte, 512)
         session.Read(buf)
 
         outMessage := client.Message {
