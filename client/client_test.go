@@ -45,11 +45,11 @@ func (mocked *ConnMock) WriteMessage(messageType int, data []byte) error {
 
 func (mocked *ConnMock) MockClosed(expectedError error) {
 	mocked.On("Close").Return(nil)
-    mocked.On(
+	mocked.On(
 		"WriteMessage",
 		websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
-    ).Return(expectedError)
+	).Return(expectedError)
 }
 
 type DialerMock struct {
@@ -82,7 +82,7 @@ func (suite *ClientTestSuite) TestListenSuccess() {
 	defer close(in)
 
 	mockConn := new(ConnMock)
-    mockConn.MockClosed(nil)
+	mockConn.MockClosed(nil)
 	mockConn.On("ReadMessage").Return(0, []byte("{\"message\": \"test message\"}"), nil)
 
 	mockDialer := new(DialerMock)
@@ -106,7 +106,7 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 	defer close(in)
 
 	mockConn := new(ConnMock)
-    mockConn.MockClosed(expectedError)
+	mockConn.MockClosed(expectedError)
 	mockConn.On("ReadMessage").Return(0, nil, nil)
 
 	mockDialer := new(DialerMock)
@@ -175,7 +175,7 @@ func (suite *ClientTestSuite) TestWriteMessage() {
 	jsonMessage, _ := json.Marshal(testMessage)
 
 	mockConn := new(ConnMock)
-    mockConn.MockClosed(nil)
+	mockConn.MockClosed(nil)
 	mockConn.On(
 		"WriteMessage",
 		websocket.TextMessage,
