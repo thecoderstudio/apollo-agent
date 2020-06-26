@@ -23,7 +23,7 @@ func (manager *Manager) Execute(message websocket.Message) {
 		go manager.writeOutput(&out)
 	}
 
-	pty.Execute(message.Message)
+	go pty.Execute(message.Message)
 }
 
 func (manager *Manager) writeOutput(in *<-chan websocket.Message) {

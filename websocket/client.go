@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/thecoderstudio/apollo-agent/oauth"
@@ -90,15 +89,13 @@ func (client *Client) createConnection(endpointURL url.URL, accessToken oauth.Ac
 
 func (client *Client) awaitMessages(connection *Connection, out *chan Message, errs *chan error, done, doneListening *chan struct{}) {
 	defer close(*doneListening)
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
 
 	conn := *connection
 	for {
 		select {
 		case <-*done:
 			return
-		case <-ticker.C:
+        default:
 			_, rawMessage, err := conn.ReadMessage()
 			if err != nil {
 				log.Println("read error:", err)
