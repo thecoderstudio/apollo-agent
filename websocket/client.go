@@ -104,6 +104,9 @@ func (client *Client) awaitMessages(connection *Connection, out *chan Message, e
 			}
 			message := Message{}
 			json.Unmarshal([]byte(rawMessage), &message)
+            if message.ConnectionID == "" {
+                continue
+            }
 			*out <- message
 		}
 	}

@@ -74,7 +74,12 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 			out, done, errs = wsClient.Listen(u, newAccessToken, &in, &interrupt)
 			close(previousInterrupt)
 		case message := <-out:
-			go ptyManager.Execute(message)
+            // TODO create top management struct
+            if message.Message == "new connection" {
+                ptyManager.CreateNewSession(message.ConnectionID)
+            } else {
+                go ptyManager.Execute(message)
+            }
 		case err := <-errs:
 			log.Println(err)
 		case <-*interruptSignal:

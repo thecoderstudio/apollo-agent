@@ -17,13 +17,20 @@ func (manager *Manager) Execute(message websocket.Message) {
 	pty := manager.sessions[message.ConnectionID]
 
 	if pty == nil {
-		pty = CreateSession(message.ConnectionID)
-		manager.sessions[message.ConnectionID] = pty
-		out := pty.Out()
-		go manager.writeOutput(&out)
+        pty = manager.CreateNewSession(message.ConnectionID)
 	}
 
 	go pty.Execute(message.Message)
+}
+
+// CreateNewSession creates a new PTY session for the given ID,
+// overwriting the existing session for this ID if present.
+func (manager *Manager) CreateNewSession(sessionID string) *Session {
+    pty := CreateSession(sessionID)
+    manager.sessions[sessionID] = pty
+    out := pty.Out()
+    go manager.writeOutput(&out)
+    return pty
 }
 
 func (manager *Manager) writeOutput(in *<-chan websocket.Message) {

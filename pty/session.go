@@ -2,6 +2,7 @@ package pty
 
 import (
 	"errors"
+    "log"
 	"os"
 	"os/exec"
 
@@ -42,10 +43,6 @@ func (ptySession *Session) Execute(toBeExecuted string) error {
 		return err
 	}
 
-	if toBeExecuted == "new connection" {
-		err = ptySession.createNewSession()
-        return err
-	}
 	_, err = ptySession.session.Write([]byte(toBeExecuted))
 	return err
 }
@@ -69,6 +66,8 @@ func (ptySession *Session) listen(session *os.File) {
 			ConnectionID: ptySession.SessionID,
 			Message:      string(buf),
 		}
+        log.Println(outMessage.ConnectionID)
+        log.Println(outMessage.Message)
 		if !ptySession.closed {
 			*ptySession.out <- outMessage
 		}
@@ -92,5 +91,6 @@ func CreateSession(sessionID string) *Session {
 		out:       &out,
 		closed:    false,
 	}
+    ptySession.createNewSession()
 	return &ptySession
 }
