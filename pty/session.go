@@ -42,8 +42,9 @@ func (ptySession *Session) Execute(toBeExecuted string) error {
 		return err
 	}
 
-	if ptySession.session == nil {
+	if toBeExecuted == "new connection" {
 		err = ptySession.createNewSession()
+        return err
 	}
 	_, err = ptySession.session.Write([]byte(toBeExecuted))
 	return err
