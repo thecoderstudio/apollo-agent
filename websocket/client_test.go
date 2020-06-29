@@ -86,8 +86,8 @@ func (suite *ClientTestSuite) TestListenSuccess() {
 	mockConn.On("ReadMessage").Return(0, []byte("{\"message\": \"test message\"}"), nil)
 
 	wsClient := createWsClient(mockConn)
-	out, _, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
-	message := <-out
+	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	message := <-wsClient.Out()
 
 	assert.Equal(suite.T(), "test message", message.Message)
 
@@ -107,7 +107,7 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 	mockConn.On("ReadMessage").Return(0, nil, nil)
 
 	wsClient := createWsClient(mockConn)
-	_, _, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
 
 	close(interrupt)
 
@@ -126,8 +126,8 @@ func (suite *ClientTestSuite) TestConnectionError() {
 	mockDialer.On("Dial", u.String(), http.Header{"Authorization": []string{" "}}).Return(nil, nil, expectedError)
 
 	wsClient := websocket.CreateClient(mockDialer)
-	_, _, _, errs := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
-	err := <-errs
+	wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	err := <-wsClient.Errs()
 
 	mockDialer.AssertExpectations(suite.T())
 	assert.EqualError(suite.T(), err, "connection error")
@@ -145,8 +145,8 @@ func (suite *ClientTestSuite) TestReadMessageError() {
 	mockConn.On("ReadMessage").Return(0, nil, expectedError)
 
 	wsClient := createWsClient(mockConn)
-	_, _, done, errs := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
-	err := <-errs
+	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	err := <-wsClient.Errs()
 
 	assert.NotNil(suite.T(), <-done)
 	mockConn.AssertExpectations(suite.T())
@@ -173,7 +173,7 @@ func (suite *ClientTestSuite) TestWriteMessage() {
 		jsonShellCommunication).Return(nil)
 
 	wsClient := createWsClient(mockConn)
-	_, _, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
 
 	in <- testShellCommunication
 
