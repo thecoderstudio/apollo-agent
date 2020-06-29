@@ -13,6 +13,7 @@ func TestCreateSession(t *testing.T) {
 	defer pty.Close()
 
 	assert.Equal(t, pty.SessionID, "test")
+	assert.NotNil(t, pty.Session())
 	assert.NotNil(t, pty.Out())
 }
 
@@ -21,7 +22,7 @@ func TestExecuteEmptyCommand(t *testing.T) {
 	defer pty.Close()
 
 	pty.Execute("")
-	assert.Nil(t, pty.Session())
+    assert.Empty(t, pty.Out())
 }
 
 func TestExecute(t *testing.T) {

@@ -58,27 +58,27 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
 
 	interrupt := make(chan struct{})
-	in := make(chan websocket.Message)
+	in := make(chan websocket.ShellCommunication)
 	defer close(in)
 
 	ptyManager := pty.CreateManager(&in)
 	defer ptyManager.Close()
 
-	out, done, errs := wsClient.Listen(u, initialToken, &in, &interrupt)
+	out, commands, done, errs := wsClient.Listen(u, initialToken, &in, &interrupt)
 
 	for {
 		select {
 		case newAccessToken := <-*accessTokenChan:
 			previousInterrupt := interrupt
 			interrupt = make(chan struct{})
-			out, done, errs = wsClient.Listen(u, newAccessToken, &in, &interrupt)
+			out, commands, done, errs = wsClient.Listen(u, newAccessToken, &in, &interrupt)
 			close(previousInterrupt)
-		case message := <-out:
-            // TODO create top management struct
-            if message.Message == "new connection" {
-                ptyManager.CreateNewSession(message.ConnectionID)
-            } else {
-                go ptyManager.Execute(message)
+		case shellComm := <-out:
+            go ptyManager.Execute(shellComm)
+        case command := <-commands:
+            // TODO create top management struct, maybe just the PTY manager.
+            if command.Command == "new connection" {
+                ptyManager.CreateNewSession(command.ConnectionID)
             }
 		case err := <-errs:
 			log.Println(err)

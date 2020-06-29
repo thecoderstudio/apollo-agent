@@ -16,7 +16,7 @@ import (
 type Session struct {
 	SessionID string
 	session   *os.File
-	out       *chan websocket.Message
+	out       *chan websocket.ShellCommunication
 	closed    bool
 }
 
@@ -27,7 +27,7 @@ func (ptySession *Session) Session() *os.File {
 
 // Out returns a read-only channel used for communicating output to command
 // execution in the PTY.
-func (ptySession *Session) Out() <-chan websocket.Message {
+func (ptySession *Session) Out() <-chan websocket.ShellCommunication {
 	return *ptySession.out
 }
 
@@ -62,14 +62,14 @@ func (ptySession *Session) listen(session *os.File) {
 		buf := make([]byte, 512)
 		session.Read(buf)
 
-		outMessage := websocket.Message{
+		outComm := websocket.ShellCommunication{
 			ConnectionID: ptySession.SessionID,
 			Message:      string(buf),
 		}
-        log.Println(outMessage.ConnectionID)
-        log.Println(outMessage.Message)
+        log.Println(outComm.ConnectionID)
+        log.Println(outComm.Message)
 		if !ptySession.closed {
-			*ptySession.out <- outMessage
+			*ptySession.out <- outComm
 		}
 	}
 }
@@ -85,7 +85,7 @@ func (ptySession *Session) Close() {
 
 // CreateSession creates a new Session injected with the given sessionID and defaults.
 func CreateSession(sessionID string) *Session {
-	out := make(chan websocket.Message)
+	out := make(chan websocket.ShellCommunication)
 	ptySession := Session{
 		SessionID: sessionID,
 		out:       &out,

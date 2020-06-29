@@ -11,10 +11,16 @@ import (
 	"github.com/thecoderstudio/apollo-agent/oauth"
 )
 
-// Message as received by Apollo
-type Message struct {
+// ShellCommunication is used for communicating shell input, output and error streams.
+type ShellCommunication struct {
 	ConnectionID string `json:"connection_id"`
 	Message      string `json:"message"`
+}
+
+// Command is used to instruct the agent to execute a pre-defined command.
+type Command struct {
+    ConnectionID    string `json:"connection_id"`
+    Command         string `json:"command"`
 }
 
 // Connection specifies the interface for client connection
@@ -45,10 +51,15 @@ type Client struct {
 }
 
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
-// by closing the interrupt channel.
-func (client *Client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
-	in *chan Message, interrupt *chan struct{}) (<-chan Message, <-chan struct{}, <-chan error) {
-	out := make(chan Message)
+// by closing the interrupt channel. Outgoing communication send through in are sent to Apollo.
+func (client *Client) Listen(
+    endpointURL url.URL,
+    accessToken oauth.AccessToken,
+	in *chan ShellCommunication,
+    interrupt *chan struct{},
+) (<-chan ShellCommunication, <-chan Command, <-chan struct{}, <-chan error) {
+	out := make(chan ShellCommunication)
+	commands := make(chan Command)
 	errs := make(chan error)
 	done := make(chan struct{})
 
@@ -68,7 +79,7 @@ func (client *Client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
 		// to prevent sending messages to closed channels.
 		doneListening := make(chan struct{})
 
-		go client.awaitMessages(&connection, &out, &errs, &done, &doneListening)
+		go client.awaitMessages(&connection, &out, &commands, &errs, &done, &doneListening)
 		err = client.handleEvents(&connection, in, &doneListening, interrupt)
 
 		connection.Close()
@@ -76,7 +87,7 @@ func (client *Client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
 		<-doneListening
 	}()
 
-	return out, done, errs
+	return out, commands, done, errs
 }
 
 func (client *Client) createConnection(endpointURL url.URL, accessToken oauth.AccessToken) (Connection, error) {
@@ -87,7 +98,13 @@ func (client *Client) createConnection(endpointURL url.URL, accessToken oauth.Ac
 	return connection, err
 }
 
-func (client *Client) awaitMessages(connection *Connection, out *chan Message, errs *chan error, done, doneListening *chan struct{}) {
+func (client *Client) awaitMessages(
+    connection *Connection,
+    out *chan ShellCommunication,
+    commands *chan Command,
+    errs *chan error,
+    done, doneListening *chan struct{},
+) {
 	defer close(*doneListening)
 
 	conn := *connection
@@ -102,17 +119,28 @@ func (client *Client) awaitMessages(connection *Connection, out *chan Message, e
 				*errs <- err
 				return
 			}
-			message := Message{}
-			json.Unmarshal([]byte(rawMessage), &message)
-            if message.ConnectionID == "" {
-                continue
+
+			shellComm := ShellCommunication{}
+            command := Command{}
+            rawMessageBytes := []byte(rawMessage)
+
+
+			json.Unmarshal(rawMessageBytes, &shellComm)
+			json.Unmarshal(rawMessageBytes, &command)
+
+            switch {
+            case command.Command != "":
+                *commands <- command
+            case shellComm.Message != "":
+                *out <- shellComm
+            default:
+                log.Println("Message skipped")
             }
-			*out <- message
 		}
 	}
 }
 
-func (client *Client) handleEvents(connection *Connection, in *chan Message,
+func (client *Client) handleEvents(connection *Connection, in *chan ShellCommunication,
 	doneListening *chan struct{},
 	interrupt *chan struct{}) error {
 	for {

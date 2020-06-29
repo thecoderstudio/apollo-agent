@@ -5,22 +5,22 @@ import (
 )
 
 // Manager helps managing multiple PTY sessions by finding or creating the
-// correct session based on Message.ConnectionID and handling execution.
+// correct session based on ShellCommunication.ConnectionID and handling execution.
 type Manager struct {
 	sessions map[string]*Session
-	out      *chan websocket.Message
+	out      *chan websocket.ShellCommunication
 }
 
 // Execute executes the given command in a PTY session, reusing a session if
 // if already exists.
-func (manager *Manager) Execute(message websocket.Message) {
-	pty := manager.sessions[message.ConnectionID]
+func (manager *Manager) Execute(shellComm websocket.ShellCommunication) {
+	pty := manager.sessions[shellComm.ConnectionID]
 
 	if pty == nil {
-        pty = manager.CreateNewSession(message.ConnectionID)
+        pty = manager.CreateNewSession(shellComm.ConnectionID)
 	}
 
-	go pty.Execute(message.Message)
+	go pty.Execute(shellComm.Message)
 }
 
 // CreateNewSession creates a new PTY session for the given ID,
@@ -33,7 +33,7 @@ func (manager *Manager) CreateNewSession(sessionID string) *Session {
     return pty
 }
 
-func (manager *Manager) writeOutput(in *<-chan websocket.Message) {
+func (manager *Manager) writeOutput(in *<-chan websocket.ShellCommunication) {
 	for {
 		message := <-*in
 		*manager.out <- message
@@ -48,7 +48,7 @@ func (manager *Manager) Close() {
 }
 
 // CreateManager creates a Manager with the required out channel.
-func CreateManager(out *chan websocket.Message) Manager {
+func CreateManager(out *chan websocket.ShellCommunication) Manager {
 	return Manager{
 		sessions: map[string]*Session{},
 		out:      out,
