@@ -76,10 +76,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 		case shellComm := <-out:
             go ptyManager.Execute(shellComm)
         case command := <-commands:
-            // TODO create top management struct, maybe just the PTY manager.
-            if command.Command == "new connection" {
-                ptyManager.CreateNewSession(command.ConnectionID)
-            }
+            ptyManager.ExecutePredefinedCommand(command)
 		case err := <-errs:
 			log.Println(err)
 		case <-*interruptSignal:

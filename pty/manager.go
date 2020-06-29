@@ -4,6 +4,9 @@ import (
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
+// NewConnection command to open a new connection and PTY session
+const NewConnection = "new connection"
+
 // Manager helps managing multiple PTY sessions by finding or creating the
 // correct session based on ShellCommunication.ConnectionID and handling execution.
 type Manager struct {
@@ -11,7 +14,16 @@ type Manager struct {
 	out      *chan websocket.ShellCommunication
 }
 
-// Execute executes the given command in a PTY session, reusing a session if
+// ExecutePredefinedCommand executes the pre-defined command if it exists.
+func (manager *Manager) ExecutePredefinedCommand(command websocket.Command) {
+    // TODO deal with default
+    switch command.Command {
+    case NewConnection:
+        manager.CreateNewSession(command.ConnectionID)
+    }
+}
+
+// Execute executes the given shell command in a PTY session, reusing a session if
 // if already exists.
 func (manager *Manager) Execute(shellComm websocket.ShellCommunication) {
 	pty := manager.sessions[shellComm.ConnectionID]
