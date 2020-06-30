@@ -22,7 +22,7 @@ func TestExecuteEmptyCommand(t *testing.T) {
 	defer pty.Close()
 
 	pty.Execute("")
-    assert.Empty(t, pty.Out())
+	assert.Empty(t, pty.Out())
 }
 
 func TestExecute(t *testing.T) {

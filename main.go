@@ -74,9 +74,9 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 			done = wsClient.Listen(u, newAccessToken, &in, &interrupt)
 			close(previousInterrupt)
 		case shellIO := <-wsClient.Out():
-            go ptyManager.Execute(shellIO)
-        case command := <-wsClient.Commands():
-            ptyManager.ExecutePredefinedCommand(command)
+			go ptyManager.Execute(shellIO)
+		case command := <-wsClient.Commands():
+			ptyManager.ExecutePredefinedCommand(command)
 		case err := <-wsClient.Errs():
 			log.Println(err)
 		case <-*interruptSignal:

@@ -16,9 +16,9 @@ type Manager struct {
 
 // ExecutePredefinedCommand executes the pre-defined command if it exists.
 func (manager *Manager) ExecutePredefinedCommand(command websocket.Command) {
-    if command.Command == NewConnection {
-        manager.CreateNewSession(command.ConnectionID)
-    }
+	if command.Command == NewConnection {
+		manager.CreateNewSession(command.ConnectionID)
+	}
 }
 
 // Execute send the given input to the PTY session, reusing a session if
@@ -27,7 +27,7 @@ func (manager *Manager) Execute(shellIO websocket.ShellIO) {
 	pty := manager.GetSession(shellIO.ConnectionID)
 
 	if pty == nil {
-        pty = manager.CreateNewSession(shellIO.ConnectionID)
+		pty = manager.CreateNewSession(shellIO.ConnectionID)
 	}
 
 	go pty.Execute(shellIO.Message)
@@ -36,17 +36,17 @@ func (manager *Manager) Execute(shellIO websocket.ShellIO) {
 // GetSession returns the session for the given ID or nil if no such
 // session exists.
 func (manager *Manager) GetSession(sessionID string) *Session {
-    return manager.sessions[sessionID]
+	return manager.sessions[sessionID]
 }
 
 // CreateNewSession creates a new PTY session for the given ID,
 // overwriting the existing session for this ID if present.
 func (manager *Manager) CreateNewSession(sessionID string) *Session {
-    pty := CreateSession(sessionID)
-    manager.sessions[sessionID] = pty
-    out := pty.Out()
-    go manager.writeOutput(&out)
-    return pty
+	pty := CreateSession(sessionID)
+	manager.sessions[sessionID] = pty
+	out := pty.Out()
+	go manager.writeOutput(&out)
+	return pty
 }
 
 func (manager *Manager) writeOutput(in *<-chan websocket.ShellIO) {

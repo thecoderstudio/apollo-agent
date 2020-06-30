@@ -19,43 +19,43 @@ func TestCreateManager(t *testing.T) {
 }
 
 func TestNewConnectionCommand(t *testing.T) {
-    out := make(chan websocket.ShellIO)
+	out := make(chan websocket.ShellIO)
 	manager := pty.CreateManager(&out)
 
-    manager.ExecutePredefinedCommand(websocket.Command{
-        ConnectionID:   "test",
-        Command:        pty.NewConnection,
-    })
+	manager.ExecutePredefinedCommand(websocket.Command{
+		ConnectionID: "test",
+		Command:      pty.NewConnection,
+	})
 
-    assert.NotNil(t, manager.GetSession("test"))
+	assert.NotNil(t, manager.GetSession("test"))
 
-    manager.Close()
+	manager.Close()
 }
 
 func TestGetSession(t *testing.T) {
-    out := make(chan websocket.ShellIO)
+	out := make(chan websocket.ShellIO)
 	manager := pty.CreateManager(&out)
 
-    session := manager.CreateNewSession("test")
+	session := manager.CreateNewSession("test")
 
-    assert.Equal(t, manager.GetSession("test"), session)
+	assert.Equal(t, manager.GetSession("test"), session)
 
-    manager.Close()
+	manager.Close()
 
 }
 
 func TestGetSessionNotFound(t *testing.T) {
-    out := make(chan websocket.ShellIO)
+	out := make(chan websocket.ShellIO)
 	manager := pty.CreateManager(&out)
 
-    assert.Nil(t, manager.GetSession("test"))
+	assert.Nil(t, manager.GetSession("test"))
 }
 
 func TestCreateNewSession(t *testing.T) {
-    out := make(chan websocket.ShellIO)
+	out := make(chan websocket.ShellIO)
 	manager := pty.CreateManager(&out)
 
-    assert.NotNil(t, manager.CreateNewSession("test"))
+	assert.NotNil(t, manager.CreateNewSession("test"))
 }
 
 func TestManagerExecute(t *testing.T) {

@@ -35,34 +35,34 @@ func (wrapper DialWrapper) Dial(urlString string, header http.Header) (Connectio
 
 // Client is used to connect over the WebSocket protocol and receive as well as send messages.
 type Client struct {
-	dialer      Dialer
-    out         chan ShellIO
-    commands    chan Command
-    errs        chan error
+	dialer   Dialer
+	out      chan ShellIO
+	commands chan Command
+	errs     chan error
 }
 
 // Out contains received shell messages.
 func (client *Client) Out() <-chan ShellIO {
-    return client.out
+	return client.out
 }
 
 // Commands contains received pre-defined commands.
 func (client *Client) Commands() <-chan Command {
-    return client.commands
+	return client.commands
 }
 
 // Errs contains any errors that occur.
 func (client *Client) Errs() <-chan error {
-    return client.errs
+	return client.errs
 }
 
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
 // by closing the interrupt channel. Outgoing communication send through `in` are sent to Apollo.
 func (client *Client) Listen(
-    endpointURL url.URL,
-    accessToken oauth.AccessToken,
+	endpointURL url.URL,
+	accessToken oauth.AccessToken,
 	in *chan ShellIO,
-    interrupt *chan struct{},
+	interrupt *chan struct{},
 ) <-chan struct{} {
 	done := make(chan struct{})
 
@@ -106,7 +106,7 @@ func (client *Client) awaitMessages(connection *Connection, done, doneListening 
 		select {
 		case <-*done:
 			return
-        default:
+		default:
 			_, rawMessage, err := conn.ReadMessage()
 			if err != nil {
 				log.Println("read error:", err)
@@ -114,26 +114,26 @@ func (client *Client) awaitMessages(connection *Connection, done, doneListening 
 				return
 			}
 
-             client.sendOverChannels([]byte(rawMessage))
+			client.sendOverChannels([]byte(rawMessage))
 		}
 	}
 }
 
 func (client *Client) sendOverChannels(rawMessage []byte) {
-    shellIO := ShellIO{}
-    command := Command{}
+	shellIO := ShellIO{}
+	command := Command{}
 
-    json.Unmarshal(rawMessage, &shellIO)
-    json.Unmarshal(rawMessage, &command)
+	json.Unmarshal(rawMessage, &shellIO)
+	json.Unmarshal(rawMessage, &command)
 
-    switch {
-    case command.Command != "":
-        client.commands <- command
-    case shellIO.Message != "":
-        client.out <- shellIO
-    default:
-        log.Println("Message skipped")
-    }
+	switch {
+	case command.Command != "":
+		client.commands <- command
+	case shellIO.Message != "":
+		client.out <- shellIO
+	default:
+		log.Println("Message skipped")
+	}
 }
 
 func (client *Client) handleEvents(connection *Connection, in *chan ShellIO,

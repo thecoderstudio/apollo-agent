@@ -88,6 +88,6 @@ func CreateSession(sessionID string) *Session {
 		out:       &out,
 		closed:    false,
 	}
-    ptySession.createNewSession()
+	ptySession.createNewSession()
 	return &ptySession
 }

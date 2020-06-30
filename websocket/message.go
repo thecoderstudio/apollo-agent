@@ -8,7 +8,6 @@ type ShellIO struct {
 
 // Command is used to instruct the agent to execute a pre-defined command.
 type Command struct {
-    ConnectionID    string `json:"connection_id"`
-    Command         string `json:"command"`
+	ConnectionID string `json:"connection_id"`
+	Command      string `json:"command"`
 }
-
