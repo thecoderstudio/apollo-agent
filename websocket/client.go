@@ -132,17 +132,17 @@ func (client *Client) awaitMessages(connection *Connection, done, doneListening 
 }
 
 func (client *Client) sendOverChannels(rawMessage []byte) {
-    shellComm := ShellIO{}
+    shellIO := ShellIO{}
     command := Command{}
 
-    json.Unmarshal(rawMessage, &shellComm)
+    json.Unmarshal(rawMessage, &shellIO)
     json.Unmarshal(rawMessage, &command)
 
     switch {
     case command.Command != "":
         client.commands <- command
-    case shellComm.Message != "":
-        client.out <- shellComm
+    case shellIO.Message != "":
+        client.out <- shellIO
     default:
         log.Println("Message skipped")
     }

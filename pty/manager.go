@@ -25,14 +25,14 @@ func (manager *Manager) ExecutePredefinedCommand(command websocket.Command) {
 
 // Execute executes the given shell command in a PTY session, reusing a session if
 // if already exists.
-func (manager *Manager) Execute(shellComm websocket.ShellIO) {
-	pty := manager.sessions[shellComm.ConnectionID]
+func (manager *Manager) Execute(shellIO websocket.ShellIO) {
+	pty := manager.sessions[shellIO.ConnectionID]
 
 	if pty == nil {
-        pty = manager.CreateNewSession(shellComm.ConnectionID)
+        pty = manager.CreateNewSession(shellIO.ConnectionID)
 	}
 
-	go pty.Execute(shellComm.Message)
+	go pty.Execute(shellIO.Message)
 }
 
 // CreateNewSession creates a new PTY session for the given ID,
