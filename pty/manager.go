@@ -17,7 +17,7 @@ type Manager struct {
 // ExecutePredefinedCommand executes the pre-defined command if it exists.
 func (manager *Manager) ExecutePredefinedCommand(command websocket.Command) {
     if command.Command == NewConnection {
-        manager.createNewSession(command.ConnectionID)
+        manager.CreateNewSession(command.ConnectionID)
     }
 }
 
@@ -27,7 +27,7 @@ func (manager *Manager) Execute(shellIO websocket.ShellIO) {
 	pty := manager.GetSession(shellIO.ConnectionID)
 
 	if pty == nil {
-        pty = manager.createNewSession(shellIO.ConnectionID)
+        pty = manager.CreateNewSession(shellIO.ConnectionID)
 	}
 
 	go pty.Execute(shellIO.Message)
@@ -39,7 +39,9 @@ func (manager *Manager) GetSession(sessionID string) *Session {
     return manager.sessions[sessionID]
 }
 
-func (manager *Manager) createNewSession(sessionID string) *Session {
+// CreateNewSession creates a new PTY session for the given ID,
+// overwriting the existing session for this ID if present.
+func (manager *Manager) CreateNewSession(sessionID string) *Session {
     pty := CreateSession(sessionID)
     manager.sessions[sessionID] = pty
     out := pty.Out()
