@@ -78,7 +78,7 @@ type ClientTestSuite struct {
 
 func (suite *ClientTestSuite) TestListenSuccess() {
 	interrupt := make(chan struct{})
-	in := make(chan websocket.ShellCommunication)
+	in := make(chan websocket.ShellIO)
 	defer close(in)
 
 	mockConn := new(ConnMock)
@@ -99,7 +99,7 @@ func (suite *ClientTestSuite) TestListenSuccess() {
 func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 	expectedError := errors.New("test")
 	interrupt := make(chan struct{})
-	in := make(chan websocket.ShellCommunication)
+	in := make(chan websocket.ShellIO)
 	defer close(in)
 
 	mockConn := new(ConnMock)
@@ -118,7 +118,7 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 func (suite *ClientTestSuite) TestConnectionError() {
     expectedError := errors.New("connection error")
 	interrupt := make(chan struct{})
-	in := make(chan websocket.ShellCommunication)
+	in := make(chan websocket.ShellIO)
 	defer close(interrupt)
 	defer close(in)
 
@@ -136,7 +136,7 @@ func (suite *ClientTestSuite) TestConnectionError() {
 func (suite *ClientTestSuite) TestReadMessageError() {
 	expectedError := errors.New("read error")
 	interrupt := make(chan struct{})
-	in := make(chan websocket.ShellCommunication)
+	in := make(chan websocket.ShellIO)
 	defer close(interrupt)
 	defer close(in)
 
@@ -155,14 +155,14 @@ func (suite *ClientTestSuite) TestReadMessageError() {
 
 func (suite *ClientTestSuite) TestWriteMessage() {
 	interrupt := make(chan struct{})
-	in := make(chan websocket.ShellCommunication)
+	in := make(chan websocket.ShellIO)
 	defer close(in)
 
-	testShellCommunication := websocket.ShellCommunication{
+	testShellIO := websocket.ShellIO{
 		ConnectionID: "test",
 		Message:      "test",
 	}
-	jsonShellCommunication, _ := json.Marshal(testShellCommunication)
+	jsonShellIO, _ := json.Marshal(testShellIO)
 
 	mockConn := new(ConnMock)
 	mockConn.MockClosed(nil)
@@ -170,12 +170,12 @@ func (suite *ClientTestSuite) TestWriteMessage() {
 	mockConn.On(
 		"WriteMessage",
 		gorilla.TextMessage,
-		jsonShellCommunication).Return(nil)
+		jsonShellIO).Return(nil)
 
 	wsClient := createWsClient(mockConn)
 	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
 
-	in <- testShellCommunication
+	in <- testShellIO
 
 	close(interrupt)
 

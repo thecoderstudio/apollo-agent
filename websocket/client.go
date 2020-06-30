@@ -11,8 +11,8 @@ import (
 	"github.com/thecoderstudio/apollo-agent/oauth"
 )
 
-// ShellCommunication is used for communicating shell input, output and error streams.
-type ShellCommunication struct {
+// ShellIO is used for communicating shell input, output and error streams.
+type ShellIO struct {
 	ConnectionID string `json:"connection_id"`
 	Message      string `json:"message"`
 }
@@ -48,13 +48,13 @@ func (wrapper DialWrapper) Dial(urlString string, header http.Header) (Connectio
 // Client is used to connect over the WebSocket protocol and receive as well as send messages.
 type Client struct {
 	dialer      Dialer
-    out         chan ShellCommunication
+    out         chan ShellIO
     commands    chan Command
     errs        chan error
 }
 
 // Out contains received shell messages.
-func (client *Client) Out() <-chan ShellCommunication {
+func (client *Client) Out() <-chan ShellIO {
     return client.out
 }
 
@@ -73,7 +73,7 @@ func (client *Client) Errs() <-chan error {
 func (client *Client) Listen(
     endpointURL url.URL,
     accessToken oauth.AccessToken,
-	in *chan ShellCommunication,
+	in *chan ShellIO,
     interrupt *chan struct{},
 ) <-chan struct{} {
 	done := make(chan struct{})
@@ -132,7 +132,7 @@ func (client *Client) awaitMessages(connection *Connection, done, doneListening 
 }
 
 func (client *Client) sendOverChannels(rawMessage []byte) {
-    shellComm := ShellCommunication{}
+    shellComm := ShellIO{}
     command := Command{}
 
     json.Unmarshal(rawMessage, &shellComm)
@@ -148,7 +148,7 @@ func (client *Client) sendOverChannels(rawMessage []byte) {
     }
 }
 
-func (client *Client) handleEvents(connection *Connection, in *chan ShellCommunication,
+func (client *Client) handleEvents(connection *Connection, in *chan ShellIO,
 	doneListening *chan struct{},
 	interrupt *chan struct{}) error {
 	for {
@@ -183,7 +183,7 @@ func (client *Client) closeConnection(connection *Connection) error {
 
 // CreateClient is the factory to create a properly instantiated client.
 func CreateClient(dialer Dialer) Client {
-	out := make(chan ShellCommunication)
+	out := make(chan ShellIO)
 	commands := make(chan Command)
 	errs := make(chan error)
 	return Client{dialer, out, commands, errs}

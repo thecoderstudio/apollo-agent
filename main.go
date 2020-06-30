@@ -58,7 +58,7 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
 
 	interrupt := make(chan struct{})
-	in := make(chan websocket.ShellCommunication)
+	in := make(chan websocket.ShellIO)
 	defer close(in)
 
 	ptyManager := pty.CreateManager(&in)

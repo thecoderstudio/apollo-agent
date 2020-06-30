@@ -10,7 +10,7 @@ import (
 )
 
 func TestCreateManager(t *testing.T) {
-	out := make(chan websocket.ShellCommunication)
+	out := make(chan websocket.ShellIO)
 	manager := pty.CreateManager(&out)
 
 	assert.NotNil(t, manager)
@@ -19,16 +19,16 @@ func TestCreateManager(t *testing.T) {
 }
 
 func TestManagerExecute(t *testing.T) {
-	out := make(chan websocket.ShellCommunication)
+	out := make(chan websocket.ShellIO)
 	manager := pty.CreateManager(&out)
 
-	manager.Execute(websocket.ShellCommunication{
+	manager.Execute(websocket.ShellIO{
 		ConnectionID: "test",
 		Message:      "echo 1",
 	})
 	first := <-out
 
-	manager.Execute(websocket.ShellCommunication{
+	manager.Execute(websocket.ShellIO{
 		ConnectionID: "test",
 		Message:      "echo 2",
 	})
