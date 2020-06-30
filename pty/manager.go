@@ -16,28 +16,30 @@ type Manager struct {
 
 // ExecutePredefinedCommand executes the pre-defined command if it exists.
 func (manager *Manager) ExecutePredefinedCommand(command websocket.Command) {
-    // TODO deal with default
-    switch command.Command {
-    case NewConnection:
-        manager.CreateNewSession(command.ConnectionID)
+    if command.Command == NewConnection {
+        manager.createNewSession(command.ConnectionID)
     }
 }
 
-// Execute executes the given shell command in a PTY session, reusing a session if
+// Execute send the given input to the PTY session, reusing a session if
 // if already exists.
 func (manager *Manager) Execute(shellIO websocket.ShellIO) {
-	pty := manager.sessions[shellIO.ConnectionID]
+	pty := manager.GetSession(shellIO.ConnectionID)
 
 	if pty == nil {
-        pty = manager.CreateNewSession(shellIO.ConnectionID)
+        pty = manager.createNewSession(shellIO.ConnectionID)
 	}
 
 	go pty.Execute(shellIO.Message)
 }
 
-// CreateNewSession creates a new PTY session for the given ID,
-// overwriting the existing session for this ID if present.
-func (manager *Manager) CreateNewSession(sessionID string) *Session {
+// GetSession returns the session for the given ID or nil if no such
+// session exists.
+func (manager *Manager) GetSession(sessionID string) *Session {
+    return manager.sessions[sessionID]
+}
+
+func (manager *Manager) createNewSession(sessionID string) *Session {
     pty := CreateSession(sessionID)
     manager.sessions[sessionID] = pty
     out := pty.Out()

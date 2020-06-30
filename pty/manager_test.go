@@ -18,6 +18,20 @@ func TestCreateManager(t *testing.T) {
 	manager.Close()
 }
 
+func TestNewConnectionCommand(t *testing.T) {
+    out := make(chan websocket.ShellIO)
+	manager := pty.CreateManager(&out)
+
+    manager.ExecutePredefinedCommand(websocket.Command{
+        ConnectionID:   "test",
+        Command:        pty.NewConnection,
+    })
+
+    assert.NotNil(t, manager.GetSession("test"))
+
+    manager.Close()
+}
+
 func TestManagerExecute(t *testing.T) {
 	out := make(chan websocket.ShellIO)
 	manager := pty.CreateManager(&out)
