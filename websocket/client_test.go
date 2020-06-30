@@ -104,7 +104,7 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 
 	mockConn := new(ConnMock)
 	mockConn.MockClosed(expectedError)
-	mockConn.On("ReadMessage").Return(0, nil, nil)
+	mockConn.On("ReadMessage").Maybe().Return(0, nil, nil)
 
 	wsClient := createWsClient(mockConn)
 	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
