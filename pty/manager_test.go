@@ -41,7 +41,6 @@ func TestGetSession(t *testing.T) {
 	assert.Equal(t, manager.GetSession("test"), session)
 
 	manager.Close()
-
 }
 
 func TestGetSessionNotFound(t *testing.T) {
