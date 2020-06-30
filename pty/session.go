@@ -2,7 +2,6 @@ package pty
 
 import (
 	"errors"
-    "log"
 	"os"
 	"os/exec"
 
@@ -66,8 +65,6 @@ func (ptySession *Session) listen(session *os.File) {
 			ConnectionID: ptySession.SessionID,
 			Message:      string(buf),
 		}
-        log.Println(outComm.ConnectionID)
-        log.Println(outComm.Message)
 		if !ptySession.closed {
 			*ptySession.out <- outComm
 		}

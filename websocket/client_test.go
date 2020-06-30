@@ -76,24 +76,28 @@ type ClientTestSuite struct {
 	suite.Suite
 }
 
-func (suite *ClientTestSuite) TestListenSuccess() {
+func (suite *ClientTestSuite) TestListenForShellIOSuccess() {
 	interrupt := make(chan struct{})
 	in := make(chan websocket.ShellIO)
 	defer close(in)
 
 	mockConn := new(ConnMock)
 	mockConn.MockClosed(nil)
+    mockConn.On("ReadMessage").Return(0, []byte("{\"command\": \"new connection\"}"), nil).Once()
 	mockConn.On("ReadMessage").Return(0, []byte("{\"message\": \"test message\"}"), nil)
 
 	wsClient := createWsClient(mockConn)
 	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+    command := <-wsClient.Commands()
 	message := <-wsClient.Out()
 
+    assert.Equal(suite.T(), "new connection", command.Command)
 	assert.Equal(suite.T(), "test message", message.Message)
 
 	close(interrupt)
 
 	assert.NotNil(suite.T(), <-done)
+	mockConn.AssertExpectations(suite.T())
 }
 
 func (suite *ClientTestSuite) TestCloseConnectionWriteError() {

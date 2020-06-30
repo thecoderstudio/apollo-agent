@@ -137,6 +137,8 @@ func (client *Client) sendOverChannels(rawMessage []byte) {
 
     json.Unmarshal(rawMessage, &shellIO)
     json.Unmarshal(rawMessage, &command)
+    print(command.Command)
+    print(shellIO.Message)
 
     switch {
     case command.Command != "":
