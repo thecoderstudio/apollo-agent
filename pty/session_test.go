@@ -26,7 +26,7 @@ func TestExecuteEmptyCommand(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
-	shellsForTesting := []string{"/bin/bash", "/bin/sh"}
+	shellsForTesting := []string{"/bin/bash", "/bin/zsh"}
 
 	for _, shell := range shellsForTesting {
 		t.Run(shell, func(t *testing.T) {
