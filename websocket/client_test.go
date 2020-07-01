@@ -76,39 +76,42 @@ type ClientTestSuite struct {
 	suite.Suite
 }
 
-func (suite *ClientTestSuite) TestListenSuccess() {
+func (suite *ClientTestSuite) TestListenForShellIOSuccess() {
 	interrupt := make(chan struct{})
-	in := make(chan websocket.Message)
+	in := make(chan websocket.ShellIO)
 	defer close(in)
 
 	mockConn := new(ConnMock)
 	mockConn.MockClosed(nil)
+	mockConn.On("ReadMessage").Return(0, []byte("{\"command\": \"new connection\"}"), nil).Once()
 	mockConn.On("ReadMessage").Return(0, []byte("{\"message\": \"test message\"}"), nil)
 
 	wsClient := createWsClient(mockConn)
-	out, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
-	message := <-out
+	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	command := <-wsClient.Commands()
+	message := <-wsClient.Out()
 
+	assert.Equal(suite.T(), "new connection", command.Command)
 	assert.Equal(suite.T(), "test message", message.Message)
 
 	close(interrupt)
 
 	assert.NotNil(suite.T(), <-done)
+	mockConn.AssertExpectations(suite.T())
 }
 
 func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 	expectedError := errors.New("test")
 	interrupt := make(chan struct{})
-	in := make(chan websocket.Message)
+	in := make(chan websocket.ShellIO)
 	defer close(in)
 
 	mockConn := new(ConnMock)
 	mockConn.MockClosed(expectedError)
-	mockConn.On("ReadMessage").Return(0, nil, nil)
+	mockConn.On("ReadMessage").Maybe().Return(0, nil, nil)
 
 	wsClient := createWsClient(mockConn)
-	out, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
-	<-out
+	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
 
 	close(interrupt)
 
@@ -117,9 +120,9 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 }
 
 func (suite *ClientTestSuite) TestConnectionError() {
-    expectedError := errors.New("connection error")
+	expectedError := errors.New("connection error")
 	interrupt := make(chan struct{})
-	in := make(chan websocket.Message)
+	in := make(chan websocket.ShellIO)
 	defer close(interrupt)
 	defer close(in)
 
@@ -127,8 +130,8 @@ func (suite *ClientTestSuite) TestConnectionError() {
 	mockDialer.On("Dial", u.String(), http.Header{"Authorization": []string{" "}}).Return(nil, nil, expectedError)
 
 	wsClient := websocket.CreateClient(mockDialer)
-	_, _, errs := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
-	err := <-errs
+	wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	err := <-wsClient.Errs()
 
 	mockDialer.AssertExpectations(suite.T())
 	assert.EqualError(suite.T(), err, "connection error")
@@ -137,7 +140,7 @@ func (suite *ClientTestSuite) TestConnectionError() {
 func (suite *ClientTestSuite) TestReadMessageError() {
 	expectedError := errors.New("read error")
 	interrupt := make(chan struct{})
-	in := make(chan websocket.Message)
+	in := make(chan websocket.ShellIO)
 	defer close(interrupt)
 	defer close(in)
 
@@ -146,8 +149,8 @@ func (suite *ClientTestSuite) TestReadMessageError() {
 	mockConn.On("ReadMessage").Return(0, nil, expectedError)
 
 	wsClient := createWsClient(mockConn)
-	_, done, errs := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
-	err := <-errs
+	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	err := <-wsClient.Errs()
 
 	assert.NotNil(suite.T(), <-done)
 	mockConn.AssertExpectations(suite.T())
@@ -156,26 +159,27 @@ func (suite *ClientTestSuite) TestReadMessageError() {
 
 func (suite *ClientTestSuite) TestWriteMessage() {
 	interrupt := make(chan struct{})
-	in := make(chan websocket.Message)
+	in := make(chan websocket.ShellIO)
 	defer close(in)
 
-	testMessage := websocket.Message{
+	testShellIO := websocket.ShellIO{
 		ConnectionID: "test",
 		Message:      "test",
 	}
-	jsonMessage, _ := json.Marshal(testMessage)
+	jsonShellIO, _ := json.Marshal(testShellIO)
 
 	mockConn := new(ConnMock)
 	mockConn.MockClosed(nil)
+	mockConn.On("ReadMessage").Return(0, nil, nil)
 	mockConn.On(
 		"WriteMessage",
 		gorilla.TextMessage,
-		jsonMessage).Return(nil)
+		jsonShellIO).Return(nil)
 
 	wsClient := createWsClient(mockConn)
-	_, done, _ := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
 
-	in <- testMessage
+	in <- testShellIO
 
 	close(interrupt)
 
@@ -189,10 +193,9 @@ func TestClientSuite(t *testing.T) {
 }
 
 func createWsClient(mockConn *ConnMock) websocket.Client {
-    mockDialer := new(DialerMock)
+	mockDialer := new(DialerMock)
 	mockDialer.On("Dial", u.String(), http.Header{"Authorization": []string{" "}}).Return(mockConn, nil, nil)
 
 	wsClient := websocket.CreateClient(mockDialer)
-    return wsClient
-    return wsClient
+	return wsClient
 }

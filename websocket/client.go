@@ -6,17 +6,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/thecoderstudio/apollo-agent/oauth"
 )
-
-// Message as received by Apollo
-type Message struct {
-	ConnectionID string `json:"connection_id"`
-	Message      string `json:"message"`
-}
 
 // Connection specifies the interface for client connection
 type Connection interface {
@@ -42,25 +35,42 @@ func (wrapper DialWrapper) Dial(urlString string, header http.Header) (Connectio
 
 // Client is used to connect over the WebSocket protocol and receive as well as send messages.
 type Client struct {
-	dialer Dialer
+	dialer   Dialer
+	out      chan ShellIO
+	commands chan Command
+	errs     chan error
+}
+
+// Out contains received shell messages.
+func (client *Client) Out() <-chan ShellIO {
+	return client.out
+}
+
+// Commands contains received pre-defined commands.
+func (client *Client) Commands() <-chan Command {
+	return client.commands
+}
+
+// Errs contains any errors that occur.
+func (client *Client) Errs() <-chan error {
+	return client.errs
 }
 
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
-// by closing the interrupt channel.
-func (client *Client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
-	in *chan Message, interrupt *chan struct{}) (<-chan Message, <-chan struct{}, <-chan error) {
-	out := make(chan Message)
-	errs := make(chan error)
+// by closing the interrupt channel. Outgoing communication send through `in` are sent to Apollo.
+func (client *Client) Listen(
+	endpointURL url.URL,
+	accessToken oauth.AccessToken,
+	in *chan ShellIO,
+	interrupt *chan struct{},
+) <-chan struct{} {
 	done := make(chan struct{})
 
 	go func() {
-		defer close(out)
-		defer close(errs)
-
 		connection, err := client.createConnection(endpointURL, accessToken)
 		if err != nil {
 			log.Println("Connection error")
-			errs <- err
+			client.errs <- err
 			close(done)
 			return
 		}
@@ -69,7 +79,7 @@ func (client *Client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
 		// to prevent sending messages to closed channels.
 		doneListening := make(chan struct{})
 
-		go client.awaitMessages(&connection, &out, &errs, &done, &doneListening)
+		go client.awaitMessages(&connection, &done, &doneListening)
 		err = client.handleEvents(&connection, in, &doneListening, interrupt)
 
 		connection.Close()
@@ -77,7 +87,7 @@ func (client *Client) Listen(endpointURL url.URL, accessToken oauth.AccessToken,
 		<-doneListening
 	}()
 
-	return out, done, errs
+	return done
 }
 
 func (client *Client) createConnection(endpointURL url.URL, accessToken oauth.AccessToken) (Connection, error) {
@@ -88,31 +98,45 @@ func (client *Client) createConnection(endpointURL url.URL, accessToken oauth.Ac
 	return connection, err
 }
 
-func (client *Client) awaitMessages(connection *Connection, out *chan Message, errs *chan error, done, doneListening *chan struct{}) {
+func (client *Client) awaitMessages(connection *Connection, done, doneListening *chan struct{}) {
 	defer close(*doneListening)
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
 
 	conn := *connection
 	for {
 		select {
 		case <-*done:
 			return
-		case <-ticker.C:
+		default:
 			_, rawMessage, err := conn.ReadMessage()
 			if err != nil {
 				log.Println("read error:", err)
-				*errs <- err
+				client.errs <- err
 				return
 			}
-			message := Message{}
-			json.Unmarshal([]byte(rawMessage), &message)
-			*out <- message
+
+			client.sendOverChannels([]byte(rawMessage))
 		}
 	}
 }
 
-func (client *Client) handleEvents(connection *Connection, in *chan Message,
+func (client *Client) sendOverChannels(rawMessage []byte) {
+	shellIO := ShellIO{}
+	command := Command{}
+
+	json.Unmarshal(rawMessage, &shellIO)
+	json.Unmarshal(rawMessage, &command)
+
+	switch {
+	case command.Command != "":
+		client.commands <- command
+	case shellIO.Message != "":
+		client.out <- shellIO
+	default:
+		log.Println("Message skipped")
+	}
+}
+
+func (client *Client) handleEvents(connection *Connection, in *chan ShellIO,
 	doneListening *chan struct{},
 	interrupt *chan struct{}) error {
 	for {
@@ -147,5 +171,8 @@ func (client *Client) closeConnection(connection *Connection) error {
 
 // CreateClient is the factory to create a properly instantiated client.
 func CreateClient(dialer Dialer) Client {
-	return Client{dialer: dialer}
+	out := make(chan ShellIO)
+	commands := make(chan Command)
+	errs := make(chan error)
+	return Client{dialer, out, commands, errs}
 }

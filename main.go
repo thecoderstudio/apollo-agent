@@ -58,24 +58,26 @@ func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessT
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
 
 	interrupt := make(chan struct{})
-	in := make(chan websocket.Message)
+	in := make(chan websocket.ShellIO)
 	defer close(in)
 
 	ptyManager := pty.CreateManager(&in)
 	defer ptyManager.Close()
 
-	out, done, errs := wsClient.Listen(u, initialToken, &in, &interrupt)
+	done := wsClient.Listen(u, initialToken, &in, &interrupt)
 
 	for {
 		select {
 		case newAccessToken := <-*accessTokenChan:
 			previousInterrupt := interrupt
 			interrupt = make(chan struct{})
-			out, done, errs = wsClient.Listen(u, newAccessToken, &in, &interrupt)
+			done = wsClient.Listen(u, newAccessToken, &in, &interrupt)
 			close(previousInterrupt)
-		case message := <-out:
-			ptyManager.Execute(message)
-		case err := <-errs:
+		case shellIO := <-wsClient.Out():
+			go ptyManager.Execute(shellIO)
+		case command := <-wsClient.Commands():
+			ptyManager.ExecutePredefinedCommand(command)
+		case err := <-wsClient.Errs():
 			log.Println(err)
 		case <-*interruptSignal:
 			close(interrupt)
