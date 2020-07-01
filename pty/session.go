@@ -14,7 +14,7 @@ import (
 // through the Session.Out channel.
 type Session struct {
 	SessionID string
-    shell string
+	shell     string
 	session   *os.File
 	out       *chan websocket.ShellIO
 	closed    bool
@@ -86,7 +86,7 @@ func CreateSession(sessionID, shell string) *Session {
 	out := make(chan websocket.ShellIO)
 	ptySession := Session{
 		SessionID: sessionID,
-        shell: shell,
+		shell:     shell,
 		out:       &out,
 		closed:    false,
 	}

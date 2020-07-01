@@ -17,7 +17,7 @@ var opts struct {
 	Host    string `short:"h" long:"host" description:"Host address" required:"true"`
 	AgentID string `long:"agent-id" description:"Apollo agent id" required:"true"`
 	Secret  string `long:"secret" description:"Apollo OAuth client secret" required:"true"`
-    Shell   string `long:"shell" description:"Path to shell" default:"/bin/bash"`
+	Shell   string `long:"shell" description:"Path to shell" default:"/bin/bash"`
 }
 
 func main() {
