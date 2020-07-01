@@ -23,6 +23,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install zsh
+          touch ~/.zshrc
 
       - name: Run tests
         run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
