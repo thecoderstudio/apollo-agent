@@ -14,6 +14,7 @@ import (
 // through the Session.Out channel.
 type Session struct {
 	SessionID string
+    shell string
 	session   *os.File
 	out       *chan websocket.ShellIO
 	closed    bool
@@ -47,7 +48,7 @@ func (ptySession *Session) Execute(toBeExecuted string) error {
 }
 
 func (ptySession *Session) createNewSession() error {
-	cmd := exec.Command("/bin/bash")
+	cmd := exec.Command(ptySession.shell)
 	session, err := pty.Start(cmd)
 
 	ptySession.session = session
@@ -80,11 +81,12 @@ func (ptySession *Session) Close() {
 	close(*ptySession.out)
 }
 
-// CreateSession creates a new Session injected with the given sessionID and defaults.
-func CreateSession(sessionID string) *Session {
+// CreateSession creates a new Session injected with the given sessionID, the given shell and defaults.
+func CreateSession(sessionID, shell string) *Session {
 	out := make(chan websocket.ShellIO)
 	ptySession := Session{
 		SessionID: sessionID,
+        shell: shell,
 		out:       &out,
 		closed:    false,
 	}

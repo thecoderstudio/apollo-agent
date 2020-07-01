@@ -10,6 +10,7 @@ const NewConnection = "new connection"
 // Manager helps managing multiple PTY sessions by finding or creating the
 // correct session based on ShellIO.ConnectionID and handling execution.
 type Manager struct {
+    shell string
 	sessions map[string]*Session
 	out      *chan websocket.ShellIO
 }
@@ -42,7 +43,7 @@ func (manager *Manager) GetSession(sessionID string) *Session {
 // CreateNewSession creates a new PTY session for the given ID,
 // overwriting the existing session for this ID if present.
 func (manager *Manager) CreateNewSession(sessionID string) *Session {
-	pty := CreateSession(sessionID)
+	pty := CreateSession(sessionID, manager.shell)
 	manager.sessions[sessionID] = pty
 	out := pty.Out()
 	go manager.writeOutput(&out)
@@ -63,9 +64,11 @@ func (manager *Manager) Close() {
 	}
 }
 
-// CreateManager creates a Manager with the required out channel.
-func CreateManager(out *chan websocket.ShellIO) Manager {
+// CreateManager creates a Manager with the required out channel. All sessions will get created
+// with the given shell.
+func CreateManager(out *chan websocket.ShellIO, shell string) Manager {
 	return Manager{
+        shell: shell,
 		sessions: map[string]*Session{},
 		out:      out,
 	}
