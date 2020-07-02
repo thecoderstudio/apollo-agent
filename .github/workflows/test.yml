@@ -24,6 +24,9 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install zsh
           touch ~/.zshrc
+          cd /usr/local/share/zsh
+          sudo chmod -R 755 ./site-functions
+          sudo chown -R root:root ./site-functions
 
       - name: Run tests
         run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
