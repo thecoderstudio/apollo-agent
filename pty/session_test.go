@@ -9,7 +9,7 @@ import (
 )
 
 func TestCreateSession(t *testing.T) {
-	pty := pty.CreateSession("test")
+	pty := pty.CreateSession("test", "/bin/bash")
 	defer pty.Close()
 
 	assert.Equal(t, pty.SessionID, "test")
@@ -18,7 +18,7 @@ func TestCreateSession(t *testing.T) {
 }
 
 func TestExecuteEmptyCommand(t *testing.T) {
-	pty := pty.CreateSession("test")
+	pty := pty.CreateSession("test", "/bin/bash")
 	defer pty.Close()
 
 	pty.Execute("")
@@ -26,23 +26,29 @@ func TestExecuteEmptyCommand(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
-	pty := pty.CreateSession("test")
-	defer pty.Close()
+	shellsForTesting := []string{"/bin/bash", "/bin/zsh"}
 
-	pty.Execute("echo 1")
+	for _, shell := range shellsForTesting {
+		t.Run(shell, func(t *testing.T) {
+			pty := pty.CreateSession("test", shell)
+			defer pty.Close()
 
-	outChan := pty.Out()
-	output := <-outChan
-	assert.Contains(t, output.Message, "echo 1")
-	assert.NotNil(t, pty.Session())
+			pty.Execute("echo 1")
 
-	pty.Execute("echo 2")
-	output = <-outChan
-	assert.Contains(t, output.Message, "echo 2")
+			outChan := pty.Out()
+			output := <-outChan
+			assert.Contains(t, output.Message, "echo 1")
+			assert.NotNil(t, pty.Session())
+
+			pty.Execute("echo 2")
+			output = <-outChan
+			assert.Contains(t, output.Message, "echo 2")
+		})
+	}
 }
 
 func TestExecuteOnClosed(t *testing.T) {
-	pty := pty.CreateSession("test")
+	pty := pty.CreateSession("test", "/bin/bash")
 	pty.Close()
 	err := pty.Execute("echo 1")
 	assert.EqualError(t, err, "session is closed, please create a new session")

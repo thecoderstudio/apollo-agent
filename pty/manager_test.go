@@ -11,7 +11,7 @@ import (
 
 func TestCreateManager(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-	manager := pty.CreateManager(&out)
+	manager := pty.CreateManager(&out, "/bin/bash")
 
 	assert.NotNil(t, manager)
 
@@ -20,7 +20,7 @@ func TestCreateManager(t *testing.T) {
 
 func TestNewConnectionCommand(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-	manager := pty.CreateManager(&out)
+	manager := pty.CreateManager(&out, "/bin/bash")
 
 	manager.ExecutePredefinedCommand(websocket.Command{
 		ConnectionID: "test",
@@ -34,7 +34,7 @@ func TestNewConnectionCommand(t *testing.T) {
 
 func TestGetSession(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-	manager := pty.CreateManager(&out)
+	manager := pty.CreateManager(&out, "/bin/bash")
 
 	session := manager.CreateNewSession("test")
 
@@ -45,21 +45,21 @@ func TestGetSession(t *testing.T) {
 
 func TestGetSessionNotFound(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-	manager := pty.CreateManager(&out)
+	manager := pty.CreateManager(&out, "/bin/bash")
 
 	assert.Nil(t, manager.GetSession("test"))
 }
 
 func TestCreateNewSession(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-	manager := pty.CreateManager(&out)
+	manager := pty.CreateManager(&out, "/bin/bash")
 
 	assert.NotNil(t, manager.CreateNewSession("test"))
 }
 
 func TestManagerExecute(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-	manager := pty.CreateManager(&out)
+	manager := pty.CreateManager(&out, "/bin/bash")
 
 	manager.Execute(websocket.ShellIO{
 		ConnectionID: "test",
