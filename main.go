@@ -8,6 +8,7 @@ import (
 
 	"github.com/jessevdk/go-flags"
 
+	"github.com/thecoderstudio/apollo-agent/net"
 	"github.com/thecoderstudio/apollo-agent/oauth"
 	"github.com/thecoderstudio/apollo-agent/pty"
 	"github.com/thecoderstudio/apollo-agent/websocket"
@@ -27,8 +28,12 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	accessTokenChan, initialToken := setupOAuth()
-	connect(accessTokenChan, initialToken, &interrupt)
+	host := net.GetHostFromURLString(opts.Host)
+	if host == "" {
+		log.Fatal("No valid host given")
+	}
+	accessTokenChan, initialToken := setupOAuth(host, opts.AgentID, opts.Secret)
+	connect(host, accessTokenChan, initialToken, &interrupt)
 }
 
 func parseArguments() {
@@ -38,9 +43,9 @@ func parseArguments() {
 	}
 }
 
-func setupOAuth() (*chan oauth.AccessToken, oauth.AccessToken) {
+func setupOAuth(host, agentID, secret string) (*chan oauth.AccessToken, oauth.AccessToken) {
 	var initialToken oauth.AccessToken
-	client := oauth.Create(opts.Host, opts.AgentID, opts.Secret)
+	client := oauth.Create(host, agentID, secret)
 	accessTokenChan, oauthErrs := client.GetContinuousAccessToken()
 
 	select {
@@ -53,9 +58,13 @@ func setupOAuth() (*chan oauth.AccessToken, oauth.AccessToken) {
 	return accessTokenChan, initialToken
 }
 
-func connect(accessTokenChan *chan oauth.AccessToken, initialToken oauth.AccessToken,
-	interruptSignal *chan os.Signal) {
-	u := url.URL{Scheme: "ws", Host: opts.Host, Path: "/ws"}
+func connect(
+	host string,
+	accessTokenChan *chan oauth.AccessToken,
+	initialToken oauth.AccessToken,
+	interruptSignal *chan os.Signal,
+) {
+	u := url.URL{Scheme: "ws", Host: host, Path: "/ws"}
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
 
 	interrupt := make(chan struct{})
