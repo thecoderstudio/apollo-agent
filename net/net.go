@@ -2,7 +2,7 @@ package net
 
 import "regexp"
 
-const notPartOfHostRegexp = `(.*:\/\/)|\/.*`
+const notPartOfHostRegexp = `(.*:\/\/)|(\/|\?).*`
 
 // GetHostFromURLString returns the host in a URL string.
 func GetHostFromURLString(uncleanedURL string) string {

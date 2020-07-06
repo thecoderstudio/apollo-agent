@@ -11,6 +11,7 @@ import (
 func TestGetHostFromURLString(t *testing.T) {
 	urls := []string{
 		"https://localhost:1234/test/123",
+		"https://localhost:1234?test=abc",
 		"http://localhost:1234",
 		"wss://localhost:1234/abc",
 		"ws://localhost:1234/abc",
