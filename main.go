@@ -91,7 +91,6 @@ func connect(
 			log.Println(err)
 		case <-*interruptSignal:
 			close(interrupt)
-			return
 		case <-done:
 			return
 		}
