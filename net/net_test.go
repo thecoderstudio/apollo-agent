@@ -24,3 +24,8 @@ func TestGetHostFromURLString(t *testing.T) {
 		})
 	}
 }
+
+func TestGetHostFromURLStringNotFound(t *testing.T) {
+	host := net.GetHostFromURLString("")
+	assert.Equal(t, host, "")
+}

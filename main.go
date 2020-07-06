@@ -29,6 +29,9 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	host := net.GetHostFromURLString(opts.Host)
+	if host == "" {
+		log.Fatal("No valid host given")
+	}
 	accessTokenChan, initialToken := setupOAuth(host, opts.AgentID, opts.Secret)
 	connect(host, accessTokenChan, initialToken, &interrupt)
 }
