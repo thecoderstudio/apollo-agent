@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/creack/pty"
 
@@ -17,6 +18,7 @@ type Session struct {
 	shell     string
 	session   *os.File
 	out       *chan websocket.ShellIO
+	done      *chan bool
 	closed    bool
 }
 
@@ -58,23 +60,33 @@ func (ptySession *Session) createNewSession() error {
 }
 
 func (ptySession *Session) listen(session *os.File) {
+	ticker := time.NewTicker(100 * time.Nanosecond)
+	defer ticker.Stop()
 	for {
-		buf := make([]byte, 512)
-		session.Read(buf)
+		select {
+		case <-*ptySession.done:
+			ptySession.closeSession()
+			return
+		case <-ticker.C:
+			buf := make([]byte, 512)
+			session.Read(buf)
 
-		outComm := websocket.ShellIO{
-			ConnectionID: ptySession.SessionID,
-			Message:      string(buf),
-		}
-		if !ptySession.closed {
+			outComm := websocket.ShellIO{
+				ConnectionID: ptySession.SessionID,
+				Message:      string(buf),
+			}
 			*ptySession.out <- outComm
 		}
 	}
 }
 
-// Close closes out channel and pty
+// Close schedules the session for closure
 func (ptySession *Session) Close() {
 	ptySession.closed = true
+	*ptySession.done <- true
+}
+
+func (ptySession *Session) closeSession() {
 	if ptySession.session != nil {
 		ptySession.session.Close()
 	}
@@ -84,10 +96,12 @@ func (ptySession *Session) Close() {
 // CreateSession creates a new Session injected with the given sessionID, the given shell and defaults.
 func CreateSession(sessionID, shell string) *Session {
 	out := make(chan websocket.ShellIO)
+	done := make(chan bool)
 	ptySession := Session{
 		SessionID: sessionID,
 		shell:     shell,
 		out:       &out,
+		done:      &done,
 		closed:    false,
 	}
 	ptySession.createNewSession()
