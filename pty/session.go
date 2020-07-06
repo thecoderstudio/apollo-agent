@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"os/exec"
-	"time"
 
 	"github.com/creack/pty"
 
@@ -60,14 +59,12 @@ func (ptySession *Session) createNewSession() error {
 }
 
 func (ptySession *Session) listen(session *os.File) {
-	ticker := time.NewTicker(100 * time.Nanosecond)
-	defer ticker.Stop()
 	for {
 		select {
 		case <-*ptySession.done:
 			ptySession.closeSession()
 			return
-		case <-ticker.C:
+		default:
 			buf := make([]byte, 512)
 			session.Read(buf)
 
@@ -83,7 +80,7 @@ func (ptySession *Session) listen(session *os.File) {
 // Close schedules the session for closure
 func (ptySession *Session) Close() {
 	ptySession.closed = true
-	*ptySession.done <- true
+	close(*ptySession.done)
 }
 
 func (ptySession *Session) closeSession() {
