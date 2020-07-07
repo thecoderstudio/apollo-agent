@@ -12,7 +12,7 @@ func TestCreateSession(t *testing.T) {
 	pty, err := pty.CreateSession("test", "/bin/bash")
 	defer pty.Close()
 
-    assert.NoError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, pty.SessionID, "test")
 	assert.NotNil(t, pty.Session())
 	assert.NotNil(t, pty.Out())
@@ -22,7 +22,7 @@ func TestCreateSessionInvalidShell(t *testing.T) {
 	pty, err := pty.CreateSession("test", "/bin/fake")
 	defer pty.Close()
 
-    assert.EqualError(t, err, "fork/exec /bin/fake: no such file or directory")
+	assert.EqualError(t, err, "fork/exec /bin/fake: no such file or directory")
 }
 
 func TestExecuteEmptyCommand(t *testing.T) {

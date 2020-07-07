@@ -72,9 +72,9 @@ func connect(
 	defer close(in)
 
 	ptyManager, err := pty.CreateManager(&in, opts.Shell)
-    if err != nil {
-        log.Fatal(err)
-    }
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer ptyManager.Close()
 
 	done := wsClient.Listen(u, initialToken, &in, &interrupt)

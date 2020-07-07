@@ -12,9 +12,10 @@ const NewConnection = "new connection"
 // Manager helps managing multiple PTY sessions by finding or creating the
 // correct session based on ShellIO.ConnectionID and handling execution.
 type Manager struct {
-	shell    string
+	Shell    string
 	sessions map[string]*Session
 	out      *chan websocket.ShellIO
+	done      *chan bool
 }
 
 // ExecutePredefinedCommand executes the pre-defined command if it exists.
@@ -30,15 +31,15 @@ func (manager *Manager) Execute(shellIO websocket.ShellIO) error {
 	pty := manager.GetSession(shellIO.ConnectionID)
 
 	if pty == nil {
-        newPty, err := manager.CreateNewSession(shellIO.ConnectionID)
-        if err != nil {
-            return err
-        }
-        pty = newPty
+		newPty, err := manager.CreateNewSession(shellIO.ConnectionID)
+		if err != nil {
+			return err
+		}
+		pty = newPty
 	}
 
 	go pty.Execute(shellIO.Message)
-    return nil
+	return nil
 }
 
 // GetSession returns the session for the given ID or nil if no such
@@ -50,18 +51,18 @@ func (manager *Manager) GetSession(sessionID string) *Session {
 // CreateNewSession creates a new PTY session for the given ID,
 // overwriting the existing session for this ID if present.
 func (manager *Manager) CreateNewSession(sessionID string) (*Session, error) {
-	pty, err := CreateSession(sessionID, manager.shell)
+	session, err := CreateSession(sessionID, manager.Shell)
 	if err != nil {
 		log.Println(err)
 		manager.writeError(sessionID, err)
-        pty.Close()
-        return nil, err
+		session.Close()
+		return nil, err
 	}
 
-	manager.sessions[sessionID] = pty
-	out := pty.Out()
+	manager.sessions[sessionID] = session
+	out := session.Out()
 	go manager.writeOutput(&out)
-	return pty, nil
+	return session, nil
 }
 
 func (manager *Manager) writeError(sessionID string, err error) {
@@ -74,13 +75,19 @@ func (manager *Manager) writeError(sessionID string, err error) {
 
 func (manager *Manager) writeOutput(in *<-chan websocket.ShellIO) {
 	for {
-		message := <-*in
-		*manager.out <- message
+        select {
+        case <-*manager.done:
+            return
+        default:
+            message := <-*in
+            *manager.out <- message
+        }
 	}
 }
 
 // Close closes all sessions.
 func (manager *Manager) Close() {
+    close(*manager.done)
 	for _, pty := range manager.sessions {
 		pty.Close()
 	}
@@ -89,17 +96,19 @@ func (manager *Manager) Close() {
 // CreateManager creates a Manager with the required out channel. All sessions will get created
 // with the given shell.
 func CreateManager(out *chan websocket.ShellIO, shell string) (Manager, error) {
-    err := Verify(shell)
-    var manager Manager
-    if err != nil {
-        return manager, err
-    }
-
-	manager = Manager{
-		shell:    shell,
-		sessions: map[string]*Session{},
-		out:      out,
+	err := Verify(shell)
+	var manager Manager
+	if err != nil {
+		return manager, err
 	}
 
-    return manager, err
+    done := make(chan bool)
+	manager = Manager{
+		Shell:    shell,
+		sessions: map[string]*Session{},
+		out:      out,
+        done: &done,
+	}
+
+	return manager, err
 }

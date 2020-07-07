@@ -14,16 +14,16 @@ func TestCreateManager(t *testing.T) {
 	manager, err := pty.CreateManager(&out, "/bin/bash")
 
 	assert.NotNil(t, manager)
-    assert.NoError(t, err)
+	assert.NoError(t, err)
 
 	manager.Close()
 }
 
-func CreateManagerInvalidShell(t *testing.T) {
+func TestCreateManagerInvalidShell(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-    _, err := pty.CreateManager(&out, "/bin/fake")
+	_, err := pty.CreateManager(&out, "/bin/fake")
 
-    assert.EqualError(t, err, "fork/exec /bin/fake: no such file or directory")
+	assert.EqualError(t, err, "fork/exec /bin/fake: no such file or directory")
 }
 
 func TestNewConnectionCommand(t *testing.T) {
@@ -61,22 +61,25 @@ func TestGetSessionNotFound(t *testing.T) {
 func TestCreateNewSession(t *testing.T) {
 	out := make(chan websocket.ShellIO)
 	manager, _ := pty.CreateManager(&out, "/bin/bash")
-    session, err := manager.CreateNewSession("test")
+	session, err := manager.CreateNewSession("test")
 
 	assert.NotNil(t, session)
-    assert.NoError(t, err)
+	assert.NoError(t, err)
+
+	manager.Close()
 }
 
 func TestCreateNewSessionInvalidShell(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-	pty.CreateManager(&out, "/bin/fake")
+	manager, _ := pty.CreateManager(&out, "/bin/bash")
+	manager.Shell = "/bin/fake"
 
-    //session, err := manager.CreateNewSession("test")
-    //writtenErr := <-out
+	//session, err := manager.CreateNewSession("test")
 
-    //assert.Nil(t, session)
-    //assert.EqualError(t, err, "fork/exec /bin/fake: no such file or directory")
-    //assert.Equal(t, writtenErr, websocket.ShellIO{ConnectionID: "test", Message: err.Error()})
+	//assert.Nil(t, session)
+	//assert.EqualError(t, err, "fork/exec /bin/fake: no such file or directory")
+
+	manager.Close()
 }
 
 func TestManagerExecute(t *testing.T) {
@@ -103,13 +106,13 @@ func TestManagerExecute(t *testing.T) {
 
 func TestManagerExecuteInvalidShell(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-    pty.CreateManager(&out, "/bin/fake")
+	pty.CreateManager(&out, "/bin/fake")
 
-    // err := manager.Execute(websocket.ShellIO{
+	// err := manager.Execute(websocket.ShellIO{
 	//	ConnectionID: "test",
 	//	Message:      "echo 1",
 	//})
 
-    //assert.EqualError(t, err, "fork/exec /bin/fake: no such file or directory")
-    //assert.Equal(t, writtenErr, websocket.ShellIO{ConnectionID: "test", Message: err.Error()})
+	//assert.EqualError(t, err, "fork/exec /bin/fake: no such file or directory")
+	//assert.Equal(t, writtenErr, websocket.ShellIO{ConnectionID: "test", Message: err.Error()})
 }
