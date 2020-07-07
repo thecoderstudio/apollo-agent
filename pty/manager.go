@@ -15,7 +15,6 @@ type Manager struct {
 	Shell    string
 	sessions map[string]*Session
 	out      *chan websocket.ShellIO
-	done     *chan bool
 }
 
 // ExecutePredefinedCommand executes the pre-defined command if it exists.
@@ -75,19 +74,13 @@ func (manager *Manager) writeError(sessionID string, err error) {
 
 func (manager *Manager) writeOutput(in *<-chan websocket.ShellIO) {
 	for {
-		select {
-		case <-*manager.done:
-			return
-		default:
-			message := <-*in
-			*manager.out <- message
-		}
+		message := <-*in
+		*manager.out <- message
 	}
 }
 
 // Close closes all sessions.
 func (manager *Manager) Close() {
-	close(*manager.done)
 	for _, pty := range manager.sessions {
 		pty.Close()
 	}
@@ -102,12 +95,10 @@ func CreateManager(out *chan websocket.ShellIO, shell string) (Manager, error) {
 		return manager, err
 	}
 
-	done := make(chan bool)
 	manager = Manager{
 		Shell:    shell,
 		sessions: map[string]*Session{},
 		out:      out,
-		done:     &done,
 	}
 
 	return manager, err
