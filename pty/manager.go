@@ -26,14 +26,19 @@ func (manager *Manager) ExecutePredefinedCommand(command websocket.Command) {
 
 // Execute send the given input to the PTY session, reusing a session if
 // if already exists.
-func (manager *Manager) Execute(shellIO websocket.ShellIO) {
+func (manager *Manager) Execute(shellIO websocket.ShellIO) error {
 	pty := manager.GetSession(shellIO.ConnectionID)
 
 	if pty == nil {
-		pty = manager.CreateNewSession(shellIO.ConnectionID)
+        newPty, err := manager.CreateNewSession(shellIO.ConnectionID)
+        if err != nil {
+            return err
+        }
+        pty = newPty
 	}
 
 	go pty.Execute(shellIO.Message)
+    return nil
 }
 
 // GetSession returns the session for the given ID or nil if no such
@@ -44,19 +49,19 @@ func (manager *Manager) GetSession(sessionID string) *Session {
 
 // CreateNewSession creates a new PTY session for the given ID,
 // overwriting the existing session for this ID if present.
-func (manager *Manager) CreateNewSession(sessionID string) *Session {
+func (manager *Manager) CreateNewSession(sessionID string) (*Session, error) {
 	pty, err := CreateSession(sessionID, manager.shell)
 	if err != nil {
 		log.Println(err)
 		manager.writeError(sessionID, err)
-		pty.Close()
-		return nil
+        pty.Close()
+        return nil, err
 	}
 
 	manager.sessions[sessionID] = pty
 	out := pty.Out()
 	go manager.writeOutput(&out)
-	return pty
+	return pty, nil
 }
 
 func (manager *Manager) writeError(sessionID string, err error) {
@@ -83,10 +88,18 @@ func (manager *Manager) Close() {
 
 // CreateManager creates a Manager with the required out channel. All sessions will get created
 // with the given shell.
-func CreateManager(out *chan websocket.ShellIO, shell string) Manager {
-	return Manager{
+func CreateManager(out *chan websocket.ShellIO, shell string) (Manager, error) {
+    err := Verify(shell)
+    var manager Manager
+    if err != nil {
+        return manager, err
+    }
+
+	manager = Manager{
 		shell:    shell,
 		sessions: map[string]*Session{},
 		out:      out,
 	}
+
+    return manager, err
 }

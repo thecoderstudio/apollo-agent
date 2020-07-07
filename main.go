@@ -24,7 +24,6 @@ var opts struct {
 func main() {
 	log.SetFlags(0)
 	parseArguments()
-	verifyShell(opts.Shell)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -41,13 +40,6 @@ func parseArguments() {
 	_, err := flags.Parse(&opts)
 	if err != nil {
 		panic(err)
-	}
-}
-
-func verifyShell(shell string) {
-	err := pty.Verify(shell)
-	if err != nil {
-		log.Fatal(err)
 	}
 }
 
@@ -79,7 +71,10 @@ func connect(
 	in := make(chan websocket.ShellIO)
 	defer close(in)
 
-	ptyManager := pty.CreateManager(&in, opts.Shell)
+	ptyManager, err := pty.CreateManager(&in, opts.Shell)
+    if err != nil {
+        log.Fatal(err)
+    }
 	defer ptyManager.Close()
 
 	done := wsClient.Listen(u, initialToken, &in, &interrupt)
