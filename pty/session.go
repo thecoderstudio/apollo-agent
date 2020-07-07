@@ -91,7 +91,7 @@ func (ptySession *Session) closeSession() {
 }
 
 // CreateSession creates a new Session injected with the given sessionID, the given shell and defaults.
-func CreateSession(sessionID, shell string) *Session {
+func CreateSession(sessionID, shell string) (*Session, error) {
 	out := make(chan websocket.ShellIO)
 	done := make(chan bool)
 	ptySession := Session{
@@ -101,6 +101,6 @@ func CreateSession(sessionID, shell string) *Session {
 		done:      &done,
 		closed:    false,
 	}
-	ptySession.createNewSession()
-	return &ptySession
+    err := ptySession.createNewSession()
+	return &ptySession, err
 }
