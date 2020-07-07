@@ -3,9 +3,6 @@ package pty
 import (
 	"errors"
 	"os"
-	"os/exec"
-
-	"github.com/creack/pty"
 
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
@@ -49,8 +46,7 @@ func (ptySession *Session) Execute(toBeExecuted string) error {
 }
 
 func (ptySession *Session) createNewSession() error {
-	cmd := exec.Command(ptySession.shell)
-	session, err := pty.Start(cmd)
+	session, err := Start(ptySession.shell)
 
 	ptySession.session = session
 	go ptySession.listen(ptySession.session)
@@ -101,6 +97,6 @@ func CreateSession(sessionID, shell string) (*Session, error) {
 		done:      &done,
 		closed:    false,
 	}
-    err := ptySession.createNewSession()
+	err := ptySession.createNewSession()
 	return &ptySession, err
 }

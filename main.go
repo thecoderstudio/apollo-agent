@@ -24,6 +24,7 @@ var opts struct {
 func main() {
 	log.SetFlags(0)
 	parseArguments()
+	verifyShell(opts.Shell)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -40,6 +41,13 @@ func parseArguments() {
 	_, err := flags.Parse(&opts)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func verifyShell(shell string) {
+	err := pty.Verify(shell)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 

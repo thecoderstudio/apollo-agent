@@ -1,7 +1,7 @@
 package pty
 
 import (
-    "log"
+	"log"
 
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
@@ -46,12 +46,12 @@ func (manager *Manager) GetSession(sessionID string) *Session {
 // overwriting the existing session for this ID if present.
 func (manager *Manager) CreateNewSession(sessionID string) *Session {
 	pty, err := CreateSession(sessionID, manager.shell)
-    if err != nil {
-        log.Println(err)
-        manager.writeError(sessionID, err)
-        pty.Close()
-        return nil
-    }
+	if err != nil {
+		log.Println(err)
+		manager.writeError(sessionID, err)
+		pty.Close()
+		return nil
+	}
 
 	manager.sessions[sessionID] = pty
 	out := pty.Out()
@@ -60,11 +60,11 @@ func (manager *Manager) CreateNewSession(sessionID string) *Session {
 }
 
 func (manager *Manager) writeError(sessionID string, err error) {
-    errMessage := websocket.ShellIO{
-        ConnectionID: sessionID,
-        Message: err.Error(),
-    }
-    *manager.out <- errMessage
+	errMessage := websocket.ShellIO{
+		ConnectionID: sessionID,
+		Message:      err.Error(),
+	}
+	*manager.out <- errMessage
 }
 
 func (manager *Manager) writeOutput(in *<-chan websocket.ShellIO) {
