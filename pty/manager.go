@@ -51,18 +51,18 @@ func (manager *Manager) GetSession(sessionID string) *Session {
 // CreateNewSession creates a new PTY session for the given ID,
 // overwriting the existing session for this ID if present.
 func (manager *Manager) CreateNewSession(sessionID string) (*Session, error) {
-	session, err := CreateSession(sessionID, manager.Shell)
+	pty, err := CreateSession(sessionID, manager.Shell)
 	if err != nil {
+        manager.writeError(sessionID, err)
 		log.Println(err)
-		manager.writeError(sessionID, err)
-		session.Close()
-		return nil, err
+        pty.Close()
+        return nil, err
 	}
 
-	manager.sessions[sessionID] = session
-	out := session.Out()
+	manager.sessions[sessionID] = pty
+	out := pty.Out()
 	go manager.writeOutput(&out)
-	return session, nil
+	return pty, err
 }
 
 func (manager *Manager) writeError(sessionID string, err error) {

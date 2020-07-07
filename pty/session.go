@@ -47,14 +47,11 @@ func (ptySession *Session) Execute(toBeExecuted string) error {
 
 func (ptySession *Session) createNewSession() error {
 	session, err := Start(ptySession.shell)
-	if err != nil {
-		return err
-	}
 
 	ptySession.session = session
 	go ptySession.listen(ptySession.session)
 
-	return nil
+	return err
 }
 
 func (ptySession *Session) listen(session *os.File) {
