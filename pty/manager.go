@@ -15,7 +15,7 @@ type Manager struct {
 	Shell    string
 	sessions map[string]*Session
 	out      *chan websocket.ShellIO
-	done      *chan bool
+	done     *chan bool
 }
 
 // ExecutePredefinedCommand executes the pre-defined command if it exists.
@@ -53,10 +53,10 @@ func (manager *Manager) GetSession(sessionID string) *Session {
 func (manager *Manager) CreateNewSession(sessionID string) (*Session, error) {
 	pty, err := CreateSession(sessionID, manager.Shell)
 	if err != nil {
-        manager.writeError(sessionID, err)
+		manager.writeError(sessionID, err)
 		log.Println(err)
-        pty.Close()
-        return nil, err
+		pty.Close()
+		return nil, err
 	}
 
 	manager.sessions[sessionID] = pty
@@ -75,19 +75,19 @@ func (manager *Manager) writeError(sessionID string, err error) {
 
 func (manager *Manager) writeOutput(in *<-chan websocket.ShellIO) {
 	for {
-        select {
-        case <-*manager.done:
-            return
-        default:
-            message := <-*in
-            *manager.out <- message
-        }
+		select {
+		case <-*manager.done:
+			return
+		default:
+			message := <-*in
+			*manager.out <- message
+		}
 	}
 }
 
 // Close closes all sessions.
 func (manager *Manager) Close() {
-    close(*manager.done)
+	close(*manager.done)
 	for _, pty := range manager.sessions {
 		pty.Close()
 	}
@@ -102,12 +102,12 @@ func CreateManager(out *chan websocket.ShellIO, shell string) (Manager, error) {
 		return manager, err
 	}
 
-    done := make(chan bool)
+	done := make(chan bool)
 	manager = Manager{
 		Shell:    shell,
 		sessions: map[string]*Session{},
 		out:      out,
-        done: &done,
+		done:     &done,
 	}
 
 	return manager, err

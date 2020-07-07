@@ -71,21 +71,21 @@ func TestCreateNewSession(t *testing.T) {
 
 func TestCreateNewSessionInvalidShell(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-    expectedErrMessage := "fork/exec /bin/fake: no such file or directory"
+	expectedErrMessage := "fork/exec /bin/fake: no such file or directory"
 	manager, _ := pty.CreateManager(&out, "/bin/bash")
 	manager.Shell = "/bin/fake"
 
-    go func() {
-        session, err := manager.CreateNewSession("test")
-        assert.Nil(t, session)
-        assert.EqualError(t, err, expectedErrMessage)
-    }()
+	go func() {
+		session, err := manager.CreateNewSession("test")
+		assert.Nil(t, session)
+		assert.EqualError(t, err, expectedErrMessage)
+	}()
 
-    writtenErr := <-out
+	writtenErr := <-out
 	assert.Equal(t, writtenErr, websocket.ShellIO{
-        ConnectionID: "test",
-        Message: expectedErrMessage,
-    })
+		ConnectionID: "test",
+		Message:      expectedErrMessage,
+	})
 
 	manager.Close()
 }
@@ -114,23 +114,23 @@ func TestManagerExecute(t *testing.T) {
 
 func TestManagerExecuteInvalidShell(t *testing.T) {
 	out := make(chan websocket.ShellIO)
-    expectedErrMessage := "fork/exec /bin/fake: no such file or directory"
-    manager, _ := pty.CreateManager(&out, "/bin/bash")
-    manager.Shell = "/bin/fake"
+	expectedErrMessage := "fork/exec /bin/fake: no such file or directory"
+	manager, _ := pty.CreateManager(&out, "/bin/bash")
+	manager.Shell = "/bin/fake"
 
-    go func() {
-        err := manager.Execute(websocket.ShellIO{
-            ConnectionID: "test",
-            Message:      "echo 1",
-        })
-        assert.EqualError(t, err, expectedErrMessage)
-    }()
-    writtenErr := <-out
+	go func() {
+		err := manager.Execute(websocket.ShellIO{
+			ConnectionID: "test",
+			Message:      "echo 1",
+		})
+		assert.EqualError(t, err, expectedErrMessage)
+	}()
+	writtenErr := <-out
 
 	assert.Equal(t, writtenErr, websocket.ShellIO{
-        ConnectionID: "test",
-        Message: expectedErrMessage,
-    })
+		ConnectionID: "test",
+		Message:      expectedErrMessage,
+	})
 
-    manager.Close()
+	manager.Close()
 }
