@@ -71,7 +71,10 @@ func connect(
 	in := make(chan websocket.ShellIO)
 	defer close(in)
 
-	ptyManager := pty.CreateManager(&in, opts.Shell)
+	ptyManager, err := pty.CreateManager(&in, opts.Shell)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer ptyManager.Close()
 
 	done := wsClient.Listen(u, initialToken, &in, &interrupt)
