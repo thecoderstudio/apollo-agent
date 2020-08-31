@@ -14,6 +14,7 @@ import (
 type Middleware struct {
 	Host            string
 	InterruptSignal *chan os.Signal
+	websocketClient websocket.Client
 }
 
 // Start starts the communication with the API by authenticating and maintaining the connection. Incoming websocket
@@ -69,7 +70,6 @@ func (middleware *Middleware) connect(
 			ptyManager.ExecutePredefinedCommand(command)
 		case err := <-wsClient.Errs():
 			log.Println(err)
-			done = wsClient.Listen(u, accessToken, &in, &interrupt)
 		case <-*middleware.InterruptSignal:
 			close(interrupt)
 		case <-done:
@@ -79,5 +79,10 @@ func (middleware *Middleware) connect(
 }
 
 func (middleware *Middleware) reconnect() {
+	done = middleware.Listen(u, accessToken, &in, &interrupt)
+}
 
+func CreateMiddleware(host string, interruptSignal *chan os.Signal) Middleware {
+	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
+	return Middleware{host, interruptSignal, wsClient}
 }
