@@ -61,7 +61,7 @@ func setupOAuth(host, agentID, secret string) (*chan oauth.AccessToken, oauth.Ac
 func connect(
 	host string,
 	accessTokenChan *chan oauth.AccessToken,
-	initialToken oauth.AccessToken,
+	accessToken oauth.AccessToken,
 	interruptSignal *chan os.Signal,
 ) {
 	u := url.URL{Scheme: "ws", Host: host, Path: "/ws"}
@@ -74,12 +74,13 @@ func connect(
 	ptyManager := pty.CreateManager(&in, opts.Shell)
 	defer ptyManager.Close()
 
-	done := wsClient.Listen(u, initialToken, &in, &interrupt)
+	done := wsClient.Listen(u, accessToken, &in, &interrupt)
 
 	for {
 		select {
 		case newAccessToken := <-*accessTokenChan:
 			previousInterrupt := interrupt
+			accessToken = newAccessToken
 			interrupt = make(chan struct{})
 			done = wsClient.Listen(u, newAccessToken, &in, &interrupt)
 			close(previousInterrupt)
@@ -89,6 +90,7 @@ func connect(
 			ptyManager.ExecutePredefinedCommand(command)
 		case err := <-wsClient.Errs():
 			log.Println(err)
+			done = wsClient.Listen(u, accessToken, &in, &interrupt)
 		case <-*interruptSignal:
 			close(interrupt)
 		case <-done:
