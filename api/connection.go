@@ -45,7 +45,6 @@ func (middleware *Middleware) connect(
 	shell string,
 ) {
 	u := url.URL{Scheme: "ws", Host: middleware.Host, Path: "/ws"}
-	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
 
 	interrupt := make(chan struct{})
 	in := make(chan websocket.ShellIO)
@@ -54,7 +53,7 @@ func (middleware *Middleware) connect(
 	ptyManager := pty.CreateManager(&in, shell)
 	defer ptyManager.Close()
 
-	done := wsClient.Listen(u, accessToken, &in, &interrupt)
+	done := middleware.websocketClient.Listen(u, accessToken, &in, &interrupt)
 
 	for {
 		select {
@@ -62,14 +61,18 @@ func (middleware *Middleware) connect(
 			previousInterrupt := interrupt
 			accessToken = newAccessToken
 			interrupt = make(chan struct{})
-			done = wsClient.Listen(u, newAccessToken, &in, &interrupt)
+			done = middleware.websocketClient.Listen(u, newAccessToken, &in, &interrupt)
 			close(previousInterrupt)
-		case shellIO := <-wsClient.Out():
+		case shellIO := <-middleware.websocketClient.Out():
 			go ptyManager.Execute(shellIO)
-		case command := <-wsClient.Commands():
+		case command := <-middleware.websocketClient.Commands():
 			ptyManager.ExecutePredefinedCommand(command)
-		case err := <-wsClient.Errs():
+		case err := <-middleware.websocketClient.Errs():
 			log.Println(err)
+			oldInterrupt := interrupt
+			interrupt = make(chan struct{})
+			done = middleware.reconnect(u, accessToken, &in, &interrupt)
+			close(oldInterrupt)
 		case <-*middleware.InterruptSignal:
 			close(interrupt)
 		case <-done:
@@ -78,8 +81,13 @@ func (middleware *Middleware) connect(
 	}
 }
 
-func (middleware *Middleware) reconnect() {
-	done = middleware.Listen(u, accessToken, &in, &interrupt)
+func (middleware *Middleware) reconnect(
+	u url.URL,
+	accessToken oauth.AccessToken,
+	in *chan websocket.ShellIO,
+	interrupt *chan struct{},
+) <-chan struct{} {
+	return middleware.websocketClient.Listen(u, accessToken, in, interrupt)
 }
 
 func CreateMiddleware(host string, interruptSignal *chan os.Signal) Middleware {
