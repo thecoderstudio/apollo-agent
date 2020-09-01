@@ -15,7 +15,7 @@ import (
 type Middleware struct {
 	Host            string
 	InterruptSignal *chan os.Signal
-	WebsocketClient websocket.Client
+	ShellInterface  websocket.ShellInterface
 	OAuthClient     oauth.AuthProvider
 }
 
@@ -54,7 +54,7 @@ func (middleware *Middleware) connect(
 	ptyManager := pty.CreateManager(&in, shell)
 	defer ptyManager.Close()
 
-	done := middleware.WebsocketClient.Listen(u, accessToken, &in, &interrupt)
+	done := middleware.ShellInterface.Listen(u, accessToken, &in, &interrupt)
 
 	for {
 		select {
@@ -62,13 +62,13 @@ func (middleware *Middleware) connect(
 			previousInterrupt := interrupt
 			accessToken = newAccessToken
 			interrupt = make(chan struct{})
-			done = middleware.WebsocketClient.Listen(u, newAccessToken, &in, &interrupt)
+			done = middleware.ShellInterface.Listen(u, newAccessToken, &in, &interrupt)
 			close(previousInterrupt)
-		case shellIO := <-middleware.WebsocketClient.Out():
+		case shellIO := <-middleware.ShellInterface.Out():
 			go ptyManager.Execute(shellIO)
-		case command := <-middleware.WebsocketClient.Commands():
+		case command := <-middleware.ShellInterface.Commands():
 			ptyManager.ExecutePredefinedCommand(command)
-		case err := <-middleware.WebsocketClient.Errs():
+		case err := <-middleware.ShellInterface.Errs():
 			log.Println(err)
 			done = nil
 			go func() {
@@ -92,7 +92,7 @@ func (middleware *Middleware) reconnect(
 	interrupt *chan struct{},
 ) <-chan struct{} {
 	time.Sleep(5 * time.Second)
-	return middleware.WebsocketClient.Listen(u, accessToken, in, interrupt)
+	return middleware.ShellInterface.Listen(u, accessToken, in, interrupt)
 }
 
 // CreateMiddleware is the factory to create a properly instantiated middleware.
