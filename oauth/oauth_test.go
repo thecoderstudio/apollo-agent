@@ -1,9 +1,6 @@
 package oauth_test
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -11,10 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/thecoderstudio/apollo-agent/oauth"
+	"github.com/thecoderstudio/apollo-agent/testutil"
 )
 
 func TestGetAccessToken(t *testing.T) {
-	serverMock := createServerMock(false)
+	serverMock := testutil.CreateServerMock(false)
 	defer serverMock.Close()
 	oauthClient := oauth.Create(strings.TrimPrefix(serverMock.URL, "http://"), "", "")
 	token, err := oauthClient.GetAccessToken()
@@ -26,7 +24,7 @@ func TestGetAccessToken(t *testing.T) {
 }
 
 func TestGetAccessTokenMalformedURL(t *testing.T) {
-	serverMock := createServerMock(false)
+	serverMock := testutil.CreateServerMock(false)
 	defer serverMock.Close()
 	oauthClient := oauth.Create("fakeurl", "", "")
 	_, err := oauthClient.GetAccessToken()
@@ -34,7 +32,7 @@ func TestGetAccessTokenMalformedURL(t *testing.T) {
 }
 
 func TestGetContinuousAccessToken(t *testing.T) {
-	serverMock := createServerMock(false)
+	serverMock := testutil.CreateServerMock(false)
 	defer serverMock.Close()
 	oauthClient := oauth.Create(strings.TrimPrefix(serverMock.URL, "http://"), "", "")
 
@@ -50,41 +48,10 @@ func TestGetContinuousAccessToken(t *testing.T) {
 }
 
 func TestGetContinuousAccessTokenMalformedURL(t *testing.T) {
-	serverMock := createServerMock(false)
+	serverMock := testutil.CreateServerMock(false)
 	defer serverMock.Close()
 	oauthClient := oauth.Create("fakeurl", "", "")
 	_, errs := oauthClient.GetContinuousAccessToken()
 	err := <-*errs
 	assert.Error(t, err, "lookup fakeurl: no such host")
-}
-
-func createServerMock(throwErr bool) *httptest.Server {
-	handler := http.NewServeMux()
-	handler.HandleFunc("/oauth/token", func(writer http.ResponseWriter, request *http.Request) {
-		authTokenMock(writer, request, throwErr)
-	})
-	return httptest.NewServer(handler)
-}
-
-func authTokenMock(writer http.ResponseWriter, request *http.Request, throwErr bool) {
-	if throwErr {
-		_, _ = writer.Write([]byte("something wrong"))
-		return
-	}
-
-	if request.Header.Get("Authorization") == "" {
-		errorBody := map[string]string{"detail": "Invalid Authorization header"}
-		errorBodyJSON, _ := json.Marshal(errorBody)
-		writer.WriteHeader(http.StatusBadRequest)
-		writer.Write(errorBodyJSON)
-	}
-
-	accessToken := &oauth.AccessToken{
-		AccessToken: "faketoken",
-		ExpiresIn:   121,
-		TokenType:   "Bearer",
-	}
-
-	accessTokenJSON, _ := json.Marshal(accessToken)
-	_, _ = writer.Write(accessTokenJSON)
 }

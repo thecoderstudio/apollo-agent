@@ -29,7 +29,7 @@ func (suite *ClientTestSuite) TestListenForShellIOSuccess() {
 	mockConn.On("ReadMessage").Return(0, []byte("{\"command\": \"new connection\"}"), nil).Once()
 	mockConn.On("ReadMessage").Return(0, []byte("{\"message\": \"test message\"}"), nil)
 
-	wsClient := testutil.CreateWsClient(mockConn)
+	wsClient := testutil.CreateWsClient(mockConn, " ")
 	done := wsClient.Listen(testutil.Url, oauth.AccessToken{}, &in, &interrupt)
 	command := <-wsClient.Commands()
 	message := <-wsClient.Out()
@@ -53,7 +53,7 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 	mockConn.MockClosed(expectedError)
 	mockConn.On("ReadMessage").Maybe().Return(0, nil, nil)
 
-	wsClient := testutil.CreateWsClient(mockConn)
+	wsClient := testutil.CreateWsClient(mockConn, " ")
 	done := wsClient.Listen(testutil.Url, oauth.AccessToken{}, &in, &interrupt)
 
 	close(interrupt)
@@ -91,7 +91,7 @@ func (suite *ClientTestSuite) TestReadMessageError() {
 	mockConn.On("Close").Return(nil)
 	mockConn.On("ReadMessage").Return(0, nil, expectedError)
 
-	wsClient := testutil.CreateWsClient(mockConn)
+	wsClient := testutil.CreateWsClient(mockConn, " ")
 	done := wsClient.Listen(testutil.Url, oauth.AccessToken{}, &in, &interrupt)
 	err := <-wsClient.Errs()
 
@@ -119,7 +119,7 @@ func (suite *ClientTestSuite) TestWriteMessage() {
 		gorilla.TextMessage,
 		jsonShellIO).Return(nil)
 
-	wsClient := testutil.CreateWsClient(mockConn)
+	wsClient := testutil.CreateWsClient(mockConn, " ")
 	done := wsClient.Listen(testutil.Url, oauth.AccessToken{}, &in, &interrupt)
 
 	in <- testShellIO

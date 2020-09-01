@@ -66,9 +66,9 @@ func (mocked *DialerMock) Dial(urlString string, header http.Header) (websocket.
 
 var Url = url.URL{Scheme: "ws", Host: "localhost:8000", Path: "/ws"}
 
-func CreateWsClient(mockConn *ConnMock) websocket.Client {
+func CreateWsClient(mockConn *ConnMock, authString string) websocket.Client {
 	mockDialer := new(DialerMock)
-	mockDialer.On("Dial", Url.String(), http.Header{"Authorization": []string{" "}}).Return(mockConn, nil, nil)
+	mockDialer.On("Dial", Url.String(), http.Header{"Authorization": []string{authString}}).Return(mockConn, nil, nil)
 
 	wsClient := websocket.CreateClient(mockDialer)
 	return wsClient

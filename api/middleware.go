@@ -16,19 +16,19 @@ type Middleware struct {
 	Host            string
 	InterruptSignal *chan os.Signal
 	WebsocketClient websocket.Client
+	OAuthClient     oauth.Client
 }
 
 // Start starts the communication with the API by authenticating and maintaining the connection. Incoming websocket
 // commands will be forwarded to the manager.
-func (middleware *Middleware) Start(agentID, secret, shell string) {
-	accessTokenChan, initialToken := middleware.authenticate(agentID, secret)
+func (middleware *Middleware) Start(shell string) {
+	accessTokenChan, initialToken := middleware.authenticate()
 	middleware.connect(accessTokenChan, initialToken, shell)
 }
 
-func (middleware *Middleware) authenticate(agentID, secret string) (*chan oauth.AccessToken, oauth.AccessToken) {
+func (middleware *Middleware) authenticate() (*chan oauth.AccessToken, oauth.AccessToken) {
 	var initialToken oauth.AccessToken
-	client := oauth.Create(middleware.Host, agentID, secret)
-	accessTokenChan, oauthErrs := client.GetContinuousAccessToken()
+	accessTokenChan, oauthErrs := middleware.OAuthClient.GetContinuousAccessToken()
 
 	select {
 	case newAccessToken := <-*accessTokenChan:
@@ -96,7 +96,8 @@ func (middleware *Middleware) reconnect(
 }
 
 // CreateMiddleware is the factory to create a properly instantiated middleware.
-func CreateMiddleware(host string, interruptSignal *chan os.Signal) Middleware {
+func CreateMiddleware(host, agentID, secret string, interruptSignal *chan os.Signal) Middleware {
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
-	return Middleware{host, interruptSignal, wsClient}
+	oauthClient := oauth.Create(host, agentID, secret)
+	return Middleware{host, interruptSignal, wsClient, oauthClient}
 }
