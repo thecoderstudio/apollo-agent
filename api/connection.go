@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/thecoderstudio/apollo-agent/oauth"
 	"github.com/thecoderstudio/apollo-agent/pty"
@@ -69,12 +70,15 @@ func (middleware *Middleware) connect(
 			ptyManager.ExecutePredefinedCommand(command)
 		case err := <-middleware.websocketClient.Errs():
 			log.Println(err)
-			oldInterrupt := interrupt
-			interrupt = make(chan struct{})
-			done = middleware.reconnect(u, accessToken, &in, &interrupt)
-			close(oldInterrupt)
+			done = nil
+			go func() {
+				done = middleware.reconnect(u, accessToken, &in, &interrupt)
+			}()
 		case <-*middleware.InterruptSignal:
 			close(interrupt)
+			if done == nil {
+				return
+			}
 		case <-done:
 			return
 		}
@@ -87,6 +91,7 @@ func (middleware *Middleware) reconnect(
 	in *chan websocket.ShellIO,
 	interrupt *chan struct{},
 ) <-chan struct{} {
+	time.Sleep(5 * time.Second)
 	return middleware.websocketClient.Listen(u, accessToken, in, interrupt)
 }
 
