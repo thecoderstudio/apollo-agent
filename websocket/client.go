@@ -33,6 +33,13 @@ func (wrapper DialWrapper) Dial(urlString string, header http.Header) (Connectio
 	return websocket.DefaultDialer.Dial(urlString, header)
 }
 
+type ConnectionProvider interface {
+	Out() <-chan ShellIO
+	Commands() <-chan Command
+	Errs() <-chan error
+	Listen(url.URL, oauth.AccessToken, *chan ShellIO, *chan struct{}) <-chan struct{}
+}
+
 // Client is used to connect over the WebSocket protocol and receive as well as send messages.
 type Client struct {
 	dialer   Dialer

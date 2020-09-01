@@ -16,7 +16,7 @@ type Middleware struct {
 	Host            string
 	InterruptSignal *chan os.Signal
 	WebsocketClient websocket.Client
-	OAuthClient     oauth.Client
+	OAuthClient     oauth.AuthProvider
 }
 
 // Start starts the communication with the API by authenticating and maintaining the connection. Incoming websocket
