@@ -29,17 +29,23 @@ func TestMiddleware(t *testing.T) {
 	out := make(chan websocket.ShellIO)
 	readOnlyOut := convertReadOnlyOut(out)
 	shellErrs := make(<-chan error)
-	commands := make(<-chan websocket.Command)
+	commands := make(chan websocket.Command)
+	readOnlyCommands := convertReadOnlyCommands(commands)
 
 	shellInterfaceMock := new(mocks.ShellInterface)
 	shellInterfaceMock.On("Listen", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(readOnlyDone)
 	shellInterfaceMock.On("Out").Return(readOnlyOut)
-	shellInterfaceMock.On("Commands").Return(commands)
+	shellInterfaceMock.On("Commands").Return(readOnlyCommands)
 	shellInterfaceMock.On("Errs").Return(shellErrs)
 
+	shellIO := websocket.ShellIO{ConnectionID: "1", Message: "echo 'test'"}
+	command := websocket.Command{ConnectionID: "1", Command: "test"}
 	shellManagerMock := new(mocks.ShellManager)
 	shellManagerMock.On("Close")
-	shellManagerMock.On("Execute", mock.Anything)
+	shellManagerMock.On("ExecutePredefinedCommand", command)
+	shellManagerMock.On("Execute", shellIO).Run(func(arguments mock.Arguments) {
+		close(done)
+	})
 
 	interruptSignal := make(chan os.Signal, 1)
 	middleware := api.Middleware{
@@ -50,12 +56,16 @@ func TestMiddleware(t *testing.T) {
 		OAuthClient:     authProviderMock,
 	}
 
+	notify := make(chan struct{})
 	go func() {
 		middleware.Start()
+		close(notify)
 	}()
 	accessTokenChan <- accessToken
-	out <- websocket.ShellIO{ConnectionID: "1", Message: "echo 'test'"}
-	close(done)
+	commands <- command
+	out <- shellIO
+	<-notify
+	shellManagerMock.AssertExpectations(t)
 }
 
 func convertReadOnlyDone(channel chan struct{}) <-chan struct{} {
@@ -63,5 +73,9 @@ func convertReadOnlyDone(channel chan struct{}) <-chan struct{} {
 }
 
 func convertReadOnlyOut(channel chan websocket.ShellIO) <-chan websocket.ShellIO {
+	return channel
+}
+
+func convertReadOnlyCommands(channel chan websocket.Command) <-chan websocket.Command {
 	return channel
 }
