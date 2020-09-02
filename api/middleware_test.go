@@ -37,16 +37,21 @@ func TestMiddleware(t *testing.T) {
 	shellInterfaceMock.On("Commands").Return(commands)
 	shellInterfaceMock.On("Errs").Return(shellErrs)
 
+	shellManagerMock := new(mocks.ShellManager)
+	shellManagerMock.On("Close")
+	shellManagerMock.On("Execute", mock.Anything)
+
 	interruptSignal := make(chan os.Signal, 1)
 	middleware := api.Middleware{
 		Host:            "localhost:8080",
 		InterruptSignal: &interruptSignal,
 		ShellInterface:  shellInterfaceMock,
+		PTYManager:      shellManagerMock,
 		OAuthClient:     authProviderMock,
 	}
 
 	go func() {
-		middleware.Start("bash")
+		middleware.Start()
 	}()
 	accessTokenChan <- accessToken
 	out <- websocket.ShellIO{ConnectionID: "1", Message: "echo 'test'"}
