@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"errors"
 	"os"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 )
 
 func TestMiddleware(t *testing.T) {
-
+	interruptSignal := make(chan os.Signal, 1)
 	accessTokenChan := make(chan oauth.AccessToken)
 	authErrs := make(chan error)
 	authProviderMock := new(mocks.AuthProvider)
@@ -27,9 +28,10 @@ func TestMiddleware(t *testing.T) {
 	done, readOnlyDone := createDoneChannels()
 	out, readOnlyOut := createShellIOChannels()
 	commands, readOnlyCommands := createCommandChannels()
-	shellErrs := make(<-chan error)
+	_, readOnlyConnErrs := createErrChannels()
 
-	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, shellErrs)
+	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	shellInterfaceMock.On("Listen", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(readOnlyDone)
 
 	shellIO := websocket.ShellIO{ConnectionID: "1", Message: "echo 'test'"}
 	command := websocket.Command{ConnectionID: "1", Command: "test"}
@@ -40,7 +42,6 @@ func TestMiddleware(t *testing.T) {
 		close(done)
 	})
 
-	interruptSignal := make(chan os.Signal, 1)
 	middleware := api.Middleware{
 		Host:            "localhost:8080",
 		InterruptSignal: &interruptSignal,
@@ -61,6 +62,97 @@ func TestMiddleware(t *testing.T) {
 	shellManagerMock.AssertExpectations(t)
 }
 
+func TestReAuthentication(t *testing.T) {
+	interruptSignal := make(chan os.Signal, 1)
+	accessTokenChan := make(chan oauth.AccessToken)
+	authErrs := make(chan error)
+	authProviderMock := new(mocks.AuthProvider)
+	authProviderMock.On("GetContinuousAccessToken").Return(&accessTokenChan, &authErrs)
+
+	initialAccessToken := oauth.AccessToken{
+		AccessToken: "initial",
+		ExpiresIn:   3600,
+		TokenType:   "",
+	}
+	secondAccessToken := oauth.AccessToken{
+		AccessToken: "second",
+		ExpiresIn:   3600,
+		TokenType:   "",
+	}
+	done, readOnlyDone := createDoneChannels()
+	_, readOnlyOut := createShellIOChannels()
+	_, readOnlyCommands := createCommandChannels()
+	_, readOnlyConnErrs := createErrChannels()
+
+	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	shellInterfaceMock.On("Listen", mock.Anything, initialAccessToken, mock.Anything, mock.Anything).Return(readOnlyDone).Once()
+	shellInterfaceMock.On("Listen", mock.Anything, secondAccessToken, mock.Anything, mock.Anything).Return(readOnlyDone).Run(func(args mock.Arguments) {
+		close(done)
+	})
+
+	shellManagerMock := new(mocks.ShellManager)
+	shellManagerMock.On("Close")
+
+	middleware := api.Middleware{
+		Host:            "localhost:8080",
+		InterruptSignal: &interruptSignal,
+		ShellInterface:  shellInterfaceMock,
+		PTYManager:      shellManagerMock,
+		OAuthClient:     authProviderMock,
+	}
+
+	notify := make(chan struct{})
+	go func() {
+		middleware.Start()
+		close(notify)
+	}()
+	accessTokenChan <- initialAccessToken
+	accessTokenChan <- secondAccessToken
+	<-notify
+	shellInterfaceMock.AssertExpectations(t)
+}
+
+func TestReconnect(t *testing.T) {
+	interruptSignal := make(chan os.Signal, 1)
+	accessTokenChan := make(chan oauth.AccessToken)
+	authErrs := make(chan error)
+	authProviderMock := new(mocks.AuthProvider)
+	authProviderMock.On("GetContinuousAccessToken").Return(&accessTokenChan, &authErrs)
+
+	accessToken := oauth.AccessToken{
+		AccessToken: "initial",
+		ExpiresIn:   3600,
+		TokenType:   "",
+	}
+	_, readOnlyDone := createDoneChannels()
+	_, readOnlyOut := createShellIOChannels()
+	_, readOnlyCommands := createCommandChannels()
+	connErrs, readOnlyConnErrs := createErrChannels()
+
+	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	shellInterfaceMock.On("Listen", mock.Anything, accessToken, mock.Anything, mock.Anything).Return(readOnlyDone)
+
+	shellManagerMock := new(mocks.ShellManager)
+	shellManagerMock.On("Close")
+
+	middleware := api.Middleware{
+		Host:            "localhost:8080",
+		InterruptSignal: &interruptSignal,
+		ShellInterface:  shellInterfaceMock,
+		PTYManager:      shellManagerMock,
+		OAuthClient:     authProviderMock,
+	}
+
+	notify := make(chan struct{})
+	go func() {
+		middleware.Start()
+		close(notify)
+	}()
+	accessTokenChan <- accessToken
+	connErrs <- errors.New("test")
+	<-notify
+}
+
 func createShellInterfaceMock(
 	done <-chan struct{},
 	out <-chan websocket.ShellIO,
@@ -68,7 +160,6 @@ func createShellInterfaceMock(
 	errs <-chan error,
 ) *mocks.ShellInterface {
 	shellInterfaceMock := new(mocks.ShellInterface)
-	shellInterfaceMock.On("Listen", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(done)
 	shellInterfaceMock.On("Out").Return(out)
 	shellInterfaceMock.On("Commands").Return(commands)
 	shellInterfaceMock.On("Errs").Return(errs)
@@ -88,4 +179,9 @@ func createShellIOChannels() (chan websocket.ShellIO, <-chan websocket.ShellIO) 
 func createCommandChannels() (chan websocket.Command, <-chan websocket.Command) {
 	commandChannel := make(chan websocket.Command)
 	return commandChannel, commandChannel
+}
+
+func createErrChannels() (chan error, <-chan error) {
+	errChannel := make(chan error)
+	return errChannel, errChannel
 }

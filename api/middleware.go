@@ -18,6 +18,11 @@ type Middleware struct {
 	ShellInterface  websocket.ShellInterface
 	PTYManager      pty.ShellManager
 	OAuthClient     oauth.AuthProvider
+	connected       chan bool
+}
+
+func (middleware *Middleware) Connected() <-chan bool {
+	return middleware.connected
 }
 
 // Start starts the communication with the API by authenticating and maintaining the connection. Incoming websocket
@@ -48,12 +53,10 @@ func (middleware *Middleware) connect(
 	u := url.URL{Scheme: "ws", Host: middleware.Host, Path: "/ws"}
 
 	interrupt := make(chan struct{})
-	in := make(chan websocket.ShellIO)
-	defer close(in)
 
 	defer middleware.PTYManager.Close()
 
-	done := middleware.ShellInterface.Listen(u, accessToken, &in, &interrupt)
+	done := middleware.ShellInterface.Listen(u, accessToken, middleware.PTYManager.Out(), &interrupt)
 
 	for {
 		select {
@@ -61,7 +64,7 @@ func (middleware *Middleware) connect(
 			previousInterrupt := interrupt
 			accessToken = newAccessToken
 			interrupt = make(chan struct{})
-			done = middleware.ShellInterface.Listen(u, newAccessToken, &in, &interrupt)
+			done = middleware.ShellInterface.Listen(u, newAccessToken, middleware.PTYManager.Out(), &interrupt)
 			close(previousInterrupt)
 		case shellIO := <-middleware.ShellInterface.Out():
 			go middleware.PTYManager.Execute(shellIO)
@@ -70,8 +73,10 @@ func (middleware *Middleware) connect(
 		case err := <-middleware.ShellInterface.Errs():
 			log.Println(err)
 			done = nil
+			go middleware.setConnection(false)
 			go func() {
-				done = middleware.reconnect(u, accessToken, &in, &interrupt)
+				done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), &interrupt)
+				go middleware.setConnection(true)
 			}()
 		case <-*middleware.InterruptSignal:
 			close(interrupt)
@@ -79,15 +84,20 @@ func (middleware *Middleware) connect(
 				return
 			}
 		case <-done:
+			go middleware.setConnection(false)
 			return
 		}
 	}
 }
 
+func (middleware *Middleware) setConnection(connected bool) {
+	middleware.connected <- connected
+}
+
 func (middleware *Middleware) reconnect(
 	u url.URL,
 	accessToken oauth.AccessToken,
-	in *chan websocket.ShellIO,
+	in <-chan websocket.ShellIO,
 	interrupt *chan struct{},
 ) <-chan struct{} {
 	time.Sleep(5 * time.Second)
@@ -99,5 +109,6 @@ func CreateMiddleware(host, agentID, secret, shell string, interruptSignal *chan
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
 	ptyManager := pty.CreateManager(shell)
 	oauthClient := oauth.Create(host, agentID, secret)
-	return Middleware{host, interruptSignal, wsClient, ptyManager, oauthClient}
+	connected := make(chan bool)
+	return Middleware{host, interruptSignal, wsClient, ptyManager, oauthClient, connected}
 }
