@@ -16,14 +16,15 @@ type Middleware struct {
 	Host            string
 	InterruptSignal *chan os.Signal
 	ShellInterface  websocket.ShellInterface
+	PTYManager      pty.ShellManager
 	OAuthClient     oauth.AuthProvider
 }
 
 // Start starts the communication with the API by authenticating and maintaining the connection. Incoming websocket
 // commands will be forwarded to the manager.
-func (middleware *Middleware) Start(shell string) {
+func (middleware *Middleware) Start() {
 	accessTokenChan, initialToken := middleware.authenticate()
-	middleware.connect(accessTokenChan, initialToken, shell)
+	middleware.connect(accessTokenChan, initialToken)
 }
 
 func (middleware *Middleware) authenticate() (*chan oauth.AccessToken, oauth.AccessToken) {
@@ -43,7 +44,6 @@ func (middleware *Middleware) authenticate() (*chan oauth.AccessToken, oauth.Acc
 func (middleware *Middleware) connect(
 	accessTokenChan *chan oauth.AccessToken,
 	accessToken oauth.AccessToken,
-	shell string,
 ) {
 	u := url.URL{Scheme: "ws", Host: middleware.Host, Path: "/ws"}
 
@@ -51,8 +51,7 @@ func (middleware *Middleware) connect(
 	in := make(chan websocket.ShellIO)
 	defer close(in)
 
-	ptyManager := pty.CreateManager(&in, shell)
-	defer ptyManager.Close()
+	defer middleware.PTYManager.Close()
 
 	done := middleware.ShellInterface.Listen(u, accessToken, &in, &interrupt)
 
@@ -65,9 +64,9 @@ func (middleware *Middleware) connect(
 			done = middleware.ShellInterface.Listen(u, newAccessToken, &in, &interrupt)
 			close(previousInterrupt)
 		case shellIO := <-middleware.ShellInterface.Out():
-			go ptyManager.Execute(shellIO)
+			go middleware.PTYManager.Execute(shellIO)
 		case command := <-middleware.ShellInterface.Commands():
-			ptyManager.ExecutePredefinedCommand(command)
+			middleware.PTYManager.ExecutePredefinedCommand(command)
 		case err := <-middleware.ShellInterface.Errs():
 			log.Println(err)
 			done = nil
@@ -96,8 +95,9 @@ func (middleware *Middleware) reconnect(
 }
 
 // CreateMiddleware is the factory to create a properly instantiated middleware.
-func CreateMiddleware(host, agentID, secret string, interruptSignal *chan os.Signal) Middleware {
+func CreateMiddleware(host, agentID, secret, shell string, interruptSignal *chan os.Signal) Middleware {
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
+	ptyManager := pty.CreateManager(shell)
 	oauthClient := oauth.Create(host, agentID, secret)
-	return Middleware{host, interruptSignal, wsClient, oauthClient}
+	return Middleware{host, interruptSignal, wsClient, ptyManager, oauthClient}
 }

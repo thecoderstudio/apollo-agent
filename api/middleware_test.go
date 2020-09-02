@@ -25,14 +25,15 @@ func TestMiddleware(t *testing.T) {
 		TokenType:   "",
 	}
 	done := make(chan struct{})
-	readOnlyDone := convertReadOnly(done)
-	out := make(<-chan websocket.ShellIO)
+	readOnlyDone := convertReadOnlyDone(done)
+	out := make(chan websocket.ShellIO)
+	readOnlyOut := convertReadOnlyOut(out)
 	shellErrs := make(<-chan error)
 	commands := make(<-chan websocket.Command)
 
 	shellInterfaceMock := new(mocks.ShellInterface)
 	shellInterfaceMock.On("Listen", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(readOnlyDone)
-	shellInterfaceMock.On("Out").Return(out)
+	shellInterfaceMock.On("Out").Return(readOnlyOut)
 	shellInterfaceMock.On("Commands").Return(commands)
 	shellInterfaceMock.On("Errs").Return(shellErrs)
 
@@ -48,9 +49,14 @@ func TestMiddleware(t *testing.T) {
 		middleware.Start("bash")
 	}()
 	accessTokenChan <- accessToken
+	out <- websocket.ShellIO{ConnectionID: "1", Message: "echo 'test'"}
 	close(done)
 }
 
-func convertReadOnly(channel chan struct{}) <-chan struct{} {
+func convertReadOnlyDone(channel chan struct{}) <-chan struct{} {
+	return channel
+}
+
+func convertReadOnlyOut(channel chan websocket.ShellIO) <-chan websocket.ShellIO {
 	return channel
 }

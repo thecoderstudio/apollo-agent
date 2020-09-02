@@ -29,8 +29,8 @@ func main() {
 	if host == "" {
 		log.Fatal("No valid host given")
 	}
-	middleware := api.CreateMiddleware(host, opts.AgentID, opts.Secret, &interrupt)
-	middleware.Start(opts.Shell)
+	middleware := api.CreateMiddleware(host, opts.AgentID, opts.Secret, opts.Shell, &interrupt)
+	middleware.Start()
 }
 
 func parseArguments() {
