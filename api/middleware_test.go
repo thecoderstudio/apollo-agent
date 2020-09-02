@@ -24,19 +24,12 @@ func TestMiddleware(t *testing.T) {
 		ExpiresIn:   3600,
 		TokenType:   "",
 	}
-	done := make(chan struct{})
-	readOnlyDone := convertReadOnlyDone(done)
-	out := make(chan websocket.ShellIO)
-	readOnlyOut := convertReadOnlyOut(out)
+	done, readOnlyDone := createDoneChannels()
+	out, readOnlyOut := createShellIOChannels()
+	commands, readOnlyCommands := createCommandChannels()
 	shellErrs := make(<-chan error)
-	commands := make(chan websocket.Command)
-	readOnlyCommands := convertReadOnlyCommands(commands)
 
-	shellInterfaceMock := new(mocks.ShellInterface)
-	shellInterfaceMock.On("Listen", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(readOnlyDone)
-	shellInterfaceMock.On("Out").Return(readOnlyOut)
-	shellInterfaceMock.On("Commands").Return(readOnlyCommands)
-	shellInterfaceMock.On("Errs").Return(shellErrs)
+	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, shellErrs)
 
 	shellIO := websocket.ShellIO{ConnectionID: "1", Message: "echo 'test'"}
 	command := websocket.Command{ConnectionID: "1", Command: "test"}
@@ -68,14 +61,31 @@ func TestMiddleware(t *testing.T) {
 	shellManagerMock.AssertExpectations(t)
 }
 
-func convertReadOnlyDone(channel chan struct{}) <-chan struct{} {
-	return channel
+func createShellInterfaceMock(
+	done <-chan struct{},
+	out <-chan websocket.ShellIO,
+	commands <-chan websocket.Command,
+	errs <-chan error,
+) *mocks.ShellInterface {
+	shellInterfaceMock := new(mocks.ShellInterface)
+	shellInterfaceMock.On("Listen", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(done)
+	shellInterfaceMock.On("Out").Return(out)
+	shellInterfaceMock.On("Commands").Return(commands)
+	shellInterfaceMock.On("Errs").Return(errs)
+	return shellInterfaceMock
 }
 
-func convertReadOnlyOut(channel chan websocket.ShellIO) <-chan websocket.ShellIO {
-	return channel
+func createDoneChannels() (chan struct{}, <-chan struct{}) {
+	done := make(chan struct{})
+	return done, done
 }
 
-func convertReadOnlyCommands(channel chan websocket.Command) <-chan websocket.Command {
-	return channel
+func createShellIOChannels() (chan websocket.ShellIO, <-chan websocket.ShellIO) {
+	shellIOChannel := make(chan websocket.ShellIO)
+	return shellIOChannel, shellIOChannel
+}
+
+func createCommandChannels() (chan websocket.Command, <-chan websocket.Command) {
+	commandChannel := make(chan websocket.Command)
+	return commandChannel, commandChannel
 }
