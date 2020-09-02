@@ -27,23 +27,29 @@ func (middleware *Middleware) Connected() <-chan bool {
 
 // Start starts the communication with the API by authenticating and maintaining the connection. Incoming websocket
 // commands will be forwarded to the manager.
-func (middleware *Middleware) Start() {
-	accessTokenChan, initialToken := middleware.authenticate()
+func (middleware *Middleware) Start() error {
+	accessTokenChan, initialToken, err := middleware.authenticate()
+	if err != nil {
+		return err
+	}
+
 	middleware.connect(accessTokenChan, initialToken)
+	return nil
 }
 
-func (middleware *Middleware) authenticate() (*chan oauth.AccessToken, oauth.AccessToken) {
+func (middleware *Middleware) authenticate() (*chan oauth.AccessToken, oauth.AccessToken, error) {
+	var err error
 	var initialToken oauth.AccessToken
 	accessTokenChan, oauthErrs := middleware.OAuthClient.GetContinuousAccessToken()
 
 	select {
 	case newAccessToken := <-*accessTokenChan:
 		initialToken = newAccessToken
-	case err := <-*oauthErrs:
-		log.Fatal(err)
+	case authErr := <-*oauthErrs:
+		err = authErr
 	}
 
-	return accessTokenChan, initialToken
+	return accessTokenChan, initialToken, err
 }
 
 func (middleware *Middleware) connect(

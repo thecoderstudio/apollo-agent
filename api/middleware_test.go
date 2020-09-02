@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -112,6 +113,39 @@ func TestReAuthentication(t *testing.T) {
 	accessTokenChan <- secondAccessToken
 	<-notify
 	shellInterfaceMock.AssertExpectations(t)
+}
+
+func TestAuthenticationFailure(t *testing.T) {
+	interruptSignal := make(chan os.Signal, 1)
+	accessTokenChan := make(chan oauth.AccessToken)
+	authErrs := make(chan error)
+	authProviderMock := new(mocks.AuthProvider)
+	authProviderMock.On("GetContinuousAccessToken").Return(&accessTokenChan, &authErrs)
+
+	_, readOnlyDone := createDoneChannels()
+	_, readOnlyOut := createShellIOChannels()
+	_, readOnlyCommands := createCommandChannels()
+	_, readOnlyConnErrs := createErrChannels()
+
+	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+
+	shellManagerMock := new(mocks.ShellManager)
+
+	middleware := api.Middleware{
+		Host:            "localhost:8080",
+		InterruptSignal: &interruptSignal,
+		ShellInterface:  shellInterfaceMock,
+		PTYManager:      shellManagerMock,
+		OAuthClient:     authProviderMock,
+	}
+
+	notify := make(chan struct{})
+	go func() {
+		middleware.Start()
+		close(notify)
+	}()
+	authErrs <- errors.New("test")
+	<-notify
 }
 
 func TestReconnect(t *testing.T) {
