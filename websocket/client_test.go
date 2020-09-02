@@ -87,7 +87,7 @@ func (suite *ClientTestSuite) TestListenForShellIOSuccess() {
 	mockConn.On("ReadMessage").Return(0, []byte("{\"message\": \"test message\"}"), nil)
 
 	wsClient := createWsClient(mockConn)
-	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	done := wsClient.Listen(u, oauth.AccessToken{}, in, &interrupt)
 	command := <-wsClient.Commands()
 	message := <-wsClient.Out()
 
@@ -111,7 +111,7 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 	mockConn.On("ReadMessage").Maybe().Return(0, nil, nil)
 
 	wsClient := createWsClient(mockConn)
-	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	done := wsClient.Listen(u, oauth.AccessToken{}, in, &interrupt)
 
 	close(interrupt)
 
@@ -130,7 +130,7 @@ func (suite *ClientTestSuite) TestConnectionError() {
 	mockDialer.On("Dial", u.String(), http.Header{"Authorization": []string{" "}}).Return(nil, nil, expectedError)
 
 	wsClient := websocket.CreateClient(mockDialer)
-	wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	wsClient.Listen(u, oauth.AccessToken{}, in, &interrupt)
 	err := <-wsClient.Errs()
 
 	mockDialer.AssertExpectations(suite.T())
@@ -149,7 +149,7 @@ func (suite *ClientTestSuite) TestReadMessageError() {
 	mockConn.On("ReadMessage").Return(0, nil, expectedError)
 
 	wsClient := createWsClient(mockConn)
-	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	done := wsClient.Listen(u, oauth.AccessToken{}, in, &interrupt)
 	err := <-wsClient.Errs()
 
 	assert.NotNil(suite.T(), <-done)
@@ -177,7 +177,7 @@ func (suite *ClientTestSuite) TestWriteMessage() {
 		jsonShellIO).Return(nil)
 
 	wsClient := createWsClient(mockConn)
-	done := wsClient.Listen(u, oauth.AccessToken{}, &in, &interrupt)
+	done := wsClient.Listen(u, oauth.AccessToken{}, in, &interrupt)
 
 	in <- testShellIO
 

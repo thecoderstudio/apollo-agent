@@ -49,11 +49,11 @@ func (_m *ShellInterface) Errs() <-chan error {
 }
 
 // Listen provides a mock function with given fields: _a0, _a1, _a2, _a3
-func (_m *ShellInterface) Listen(_a0 url.URL, _a1 oauth.AccessToken, _a2 *chan websocket.ShellIO, _a3 *chan struct{}) <-chan struct{} {
+func (_m *ShellInterface) Listen(_a0 url.URL, _a1 oauth.AccessToken, _a2 <-chan websocket.ShellIO, _a3 *chan struct{}) <-chan struct{} {
 	ret := _m.Called(_a0, _a1, _a2, _a3)
 
 	var r0 <-chan struct{}
-	if rf, ok := ret.Get(0).(func(url.URL, oauth.AccessToken, *chan websocket.ShellIO, *chan struct{}) <-chan struct{}); ok {
+	if rf, ok := ret.Get(0).(func(url.URL, oauth.AccessToken, <-chan websocket.ShellIO, *chan struct{}) <-chan struct{}); ok {
 		r0 = rf(_a0, _a1, _a2, _a3)
 	} else {
 		if ret.Get(0) != nil {

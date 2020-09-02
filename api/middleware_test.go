@@ -1,7 +1,7 @@
 package api_test
 
 import (
-	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -37,6 +37,7 @@ func TestMiddleware(t *testing.T) {
 	command := websocket.Command{ConnectionID: "1", Command: "test"}
 	shellManagerMock := new(mocks.ShellManager)
 	shellManagerMock.On("Close")
+	shellManagerMock.On("Out").Return(make(<-chan websocket.ShellIO))
 	shellManagerMock.On("ExecutePredefinedCommand", command)
 	shellManagerMock.On("Execute", shellIO).Run(func(arguments mock.Arguments) {
 		close(done)
@@ -92,6 +93,7 @@ func TestReAuthentication(t *testing.T) {
 
 	shellManagerMock := new(mocks.ShellManager)
 	shellManagerMock.On("Close")
+	shellManagerMock.On("Out").Return(make(<-chan websocket.ShellIO))
 
 	middleware := api.Middleware{
 		Host:            "localhost:8080",
@@ -124,16 +126,17 @@ func TestReconnect(t *testing.T) {
 		ExpiresIn:   3600,
 		TokenType:   "",
 	}
-	_, readOnlyDone := createDoneChannels()
+	done, readOnlyDone := createDoneChannels()
 	_, readOnlyOut := createShellIOChannels()
 	_, readOnlyCommands := createCommandChannels()
-	connErrs, readOnlyConnErrs := createErrChannels()
+	_, readOnlyConnErrs := createErrChannels()
 
 	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
 	shellInterfaceMock.On("Listen", mock.Anything, accessToken, mock.Anything, mock.Anything).Return(readOnlyDone)
 
 	shellManagerMock := new(mocks.ShellManager)
 	shellManagerMock.On("Close")
+	shellManagerMock.On("Out").Return(make(<-chan websocket.ShellIO))
 
 	middleware := api.Middleware{
 		Host:            "localhost:8080",
@@ -149,7 +152,17 @@ func TestReconnect(t *testing.T) {
 		close(notify)
 	}()
 	accessTokenChan <- accessToken
-	connErrs <- errors.New("test")
+
+	go func() {
+		for {
+			connected := <-middleware.Connected()
+			fmt.Println(connected)
+			if connected {
+				return
+			}
+		}
+	}()
+	close(done)
 	<-notify
 }
 
