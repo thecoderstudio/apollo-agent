@@ -3,9 +3,6 @@ package pty
 import (
 	"errors"
 	"os"
-	"os/exec"
-
-	"github.com/creack/pty"
 
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
@@ -49,8 +46,7 @@ func (ptySession *Session) Execute(toBeExecuted string) error {
 }
 
 func (ptySession *Session) createNewSession() error {
-	cmd := exec.Command(ptySession.shell)
-	session, err := pty.Start(cmd)
+	session, err := Start(ptySession.shell)
 
 	ptySession.session = session
 	go ptySession.listen(ptySession.session)
@@ -91,7 +87,7 @@ func (ptySession *Session) closeSession() {
 }
 
 // CreateSession creates a new Session injected with the given sessionID, the given shell and defaults.
-func CreateSession(sessionID, shell string) *Session {
+func CreateSession(sessionID, shell string) (*Session, error) {
 	out := make(chan websocket.ShellIO)
 	done := make(chan bool)
 	ptySession := Session{
@@ -101,6 +97,6 @@ func CreateSession(sessionID, shell string) *Session {
 		done:      &done,
 		closed:    false,
 	}
-	ptySession.createNewSession()
-	return &ptySession
+	err := ptySession.createNewSession()
+	return &ptySession, err
 }

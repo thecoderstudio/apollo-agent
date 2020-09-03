@@ -42,7 +42,7 @@ func TestMiddleware(t *testing.T) {
 	shellManagerMock.On("Close")
 	shellManagerMock.On("Out").Return(make(<-chan websocket.ShellIO))
 	shellManagerMock.On("ExecutePredefinedCommand", command)
-	shellManagerMock.On("Execute", shellIO).Run(func(arguments mock.Arguments) {
+	shellManagerMock.On("Execute", shellIO).Return(nil).Run(func(arguments mock.Arguments) {
 		interruptSignal <- syscall.SIGINT
 		close(done)
 	})
@@ -206,7 +206,8 @@ func TestReconnect(t *testing.T) {
 
 func TestCreateMiddleware(t *testing.T) {
 	interruptSignal := make(chan os.Signal, 1)
-	middleware := api.CreateMiddleware("", "", "", "", &interruptSignal)
+	middleware, err := api.CreateMiddleware("", "", "", "/bin/bash", &interruptSignal)
+	assert.NoError(t, err)
 	assert.NotNil(t, middleware)
 }
 

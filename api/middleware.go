@@ -99,10 +99,16 @@ func (middleware *Middleware) reconnect(
 }
 
 // CreateMiddleware is the factory to create a properly instantiated middleware.
-func CreateMiddleware(host, agentID, secret, shell string, interruptSignal *chan os.Signal) Middleware {
+func CreateMiddleware(host, agentID, secret, shell string, interruptSignal *chan os.Signal) (Middleware, error) {
+	var middleware Middleware
+	ptyManager, err := pty.CreateManager(shell)
+	if err != nil {
+		return middleware, err
+	}
+
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
-	ptyManager := pty.CreateManager(shell)
 	oauthClient := oauth.Create(host, agentID, secret)
 	connected := make(chan bool)
-	return Middleware{host, interruptSignal, wsClient, ptyManager, oauthClient, connected}
+	middleware = Middleware{host, interruptSignal, wsClient, ptyManager, oauthClient, connected}
+	return middleware, err
 }

@@ -29,7 +29,11 @@ func main() {
 	if host == "" {
 		log.Fatal("No valid host given")
 	}
-	middleware := api.CreateMiddleware(host, opts.AgentID, opts.Secret, opts.Shell, &interrupt)
+	middleware, err := api.CreateMiddleware(host, opts.AgentID, opts.Secret, opts.Shell, &interrupt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	middleware.Start()
 }
 

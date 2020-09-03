@@ -20,7 +20,7 @@ func (_m *ShellManager) Close() {
 }
 
 // CreateNewSession provides a mock function with given fields: _a0
-func (_m *ShellManager) CreateNewSession(_a0 string) *pty.Session {
+func (_m *ShellManager) CreateNewSession(_a0 string) (*pty.Session, error) {
 	ret := _m.Called(_a0)
 
 	var r0 *pty.Session
@@ -32,12 +32,28 @@ func (_m *ShellManager) CreateNewSession(_a0 string) *pty.Session {
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Execute provides a mock function with given fields: _a0
-func (_m *ShellManager) Execute(_a0 websocket.ShellIO) {
-	_m.Called(_a0)
+func (_m *ShellManager) Execute(_a0 websocket.ShellIO) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(websocket.ShellIO) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // ExecutePredefinedCommand provides a mock function with given fields: _a0
