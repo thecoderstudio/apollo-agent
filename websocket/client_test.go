@@ -170,7 +170,7 @@ func (suite *ClientTestSuite) TestWriteMessage() {
 
 	mockConn := new(ConnMock)
 	mockConn.MockClosed(nil)
-	mockConn.On("ReadMessage").Return(0, nil, nil)
+	mockConn.On("ReadMessage").Maybe().Return(0, nil, nil)
 	mockConn.On(
 		"WriteMessage",
 		gorilla.TextMessage,

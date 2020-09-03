@@ -33,8 +33,8 @@ func TestMiddleware(t *testing.T) {
 	commands, readOnlyCommands := createCommandChannels()
 	_, readOnlyConnErrs := createErrChannels()
 
-	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
-	shellInterfaceMock.On("Listen", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(readOnlyDone)
+	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock.On("Listen", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(readOnlyDone)
 
 	shellIO := websocket.ShellIO{ConnectionID: "1", Message: "echo 'test'"}
 	command := websocket.Command{ConnectionID: "1", Command: "test"}
@@ -50,7 +50,7 @@ func TestMiddleware(t *testing.T) {
 	middleware := api.Middleware{
 		Host:            "localhost:8080",
 		InterruptSignal: &interruptSignal,
-		ShellInterface:  shellInterfaceMock,
+		RemoteTerminal:  remoteTerminalMock,
 		PTYManager:      shellManagerMock,
 		OAuthClient:     authProviderMock,
 	}
@@ -89,9 +89,9 @@ func TestReAuthentication(t *testing.T) {
 	_, readOnlyCommands := createCommandChannels()
 	_, readOnlyConnErrs := createErrChannels()
 
-	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
-	shellInterfaceMock.On("Listen", mock.Anything, initialAccessToken, mock.Anything, mock.Anything).Return(readOnlyDone).Once()
-	shellInterfaceMock.On("Listen", mock.Anything, secondAccessToken, mock.Anything, mock.Anything).Return(readOnlyDone).Run(func(args mock.Arguments) {
+	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock.On("Listen", mock.Anything, initialAccessToken, mock.Anything, mock.Anything).Return(readOnlyDone).Once()
+	remoteTerminalMock.On("Listen", mock.Anything, secondAccessToken, mock.Anything, mock.Anything).Return(readOnlyDone).Run(func(args mock.Arguments) {
 		close(done)
 	})
 
@@ -102,7 +102,7 @@ func TestReAuthentication(t *testing.T) {
 	middleware := api.Middleware{
 		Host:            "localhost:8080",
 		InterruptSignal: &interruptSignal,
-		ShellInterface:  shellInterfaceMock,
+		RemoteTerminal:  remoteTerminalMock,
 		PTYManager:      shellManagerMock,
 		OAuthClient:     authProviderMock,
 	}
@@ -115,7 +115,7 @@ func TestReAuthentication(t *testing.T) {
 	accessTokenChan <- initialAccessToken
 	accessTokenChan <- secondAccessToken
 	<-notify
-	shellInterfaceMock.AssertExpectations(t)
+	remoteTerminalMock.AssertExpectations(t)
 }
 
 func TestAuthenticationFailure(t *testing.T) {
@@ -130,14 +130,14 @@ func TestAuthenticationFailure(t *testing.T) {
 	_, readOnlyCommands := createCommandChannels()
 	_, readOnlyConnErrs := createErrChannels()
 
-	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
 
 	shellManagerMock := new(mocks.ShellManager)
 
 	middleware := api.Middleware{
 		Host:            "localhost:8080",
 		InterruptSignal: &interruptSignal,
-		ShellInterface:  shellInterfaceMock,
+		RemoteTerminal:  remoteTerminalMock,
 		PTYManager:      shellManagerMock,
 		OAuthClient:     authProviderMock,
 	}
@@ -168,8 +168,8 @@ func TestReconnect(t *testing.T) {
 	_, readOnlyCommands := createCommandChannels()
 	connErrs, readOnlyConnErrs := createErrChannels()
 
-	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
-	shellInterfaceMock.On("Listen", mock.Anything, accessToken, mock.Anything, mock.Anything).Return(readOnlyDone)
+	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock.On("Listen", mock.Anything, accessToken, mock.Anything, mock.Anything).Return(readOnlyDone)
 
 	shellManagerMock := new(mocks.ShellManager)
 	shellManagerMock.On("Close")
@@ -178,7 +178,7 @@ func TestReconnect(t *testing.T) {
 	middleware := api.Middleware{
 		Host:            "localhost:8080",
 		InterruptSignal: &interruptSignal,
-		ShellInterface:  shellInterfaceMock,
+		RemoteTerminal:  remoteTerminalMock,
 		PTYManager:      shellManagerMock,
 		OAuthClient:     authProviderMock,
 		Connected:       make(chan bool),
@@ -210,17 +210,17 @@ func TestCreateMiddleware(t *testing.T) {
 	assert.NotNil(t, middleware)
 }
 
-func createShellInterfaceMock(
+func createRemoteTerminalMock(
 	done <-chan struct{},
 	out <-chan websocket.ShellIO,
 	commands <-chan websocket.Command,
 	errs <-chan error,
-) *mocks.ShellInterface {
-	shellInterfaceMock := new(mocks.ShellInterface)
-	shellInterfaceMock.On("Out").Return(out)
-	shellInterfaceMock.On("Commands").Return(commands)
-	shellInterfaceMock.On("Errs").Return(errs)
-	return shellInterfaceMock
+) *mocks.RemoteTerminal {
+	remoteTerminalMock := new(mocks.RemoteTerminal)
+	remoteTerminalMock.On("Out").Return(out)
+	remoteTerminalMock.On("Commands").Return(commands)
+	remoteTerminalMock.On("Errs").Return(errs)
+	return remoteTerminalMock
 }
 
 func createDoneChannels() (chan struct{}, <-chan struct{}) {

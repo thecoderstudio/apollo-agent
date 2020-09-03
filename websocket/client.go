@@ -33,7 +33,9 @@ func (wrapper DialWrapper) Dial(urlString string, header http.Header) (Connectio
 	return websocket.DefaultDialer.Dial(urlString, header)
 }
 
-type ShellInterface interface {
+// RemoteTerminal is an interface for structs that listen for remote commands and take the
+// output to these commands to send back.
+type RemoteTerminal interface {
 	Out() <-chan ShellIO
 	Commands() <-chan Command
 	Errs() <-chan error

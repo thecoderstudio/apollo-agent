@@ -15,7 +15,7 @@ import (
 type Middleware struct {
 	Host            string
 	InterruptSignal *chan os.Signal
-	ShellInterface  websocket.ShellInterface
+	RemoteTerminal  websocket.RemoteTerminal
 	PTYManager      pty.ShellManager
 	OAuthClient     oauth.AuthProvider
 	Connected       chan bool
@@ -56,7 +56,7 @@ func (middleware *Middleware) connect(
 	interrupt := make(chan struct{})
 	defer middleware.PTYManager.Close()
 
-	done := middleware.ShellInterface.Listen(u, accessToken, middleware.PTYManager.Out(), &interrupt)
+	done := middleware.RemoteTerminal.Listen(u, accessToken, middleware.PTYManager.Out(), &interrupt)
 
 	for {
 		select {
@@ -64,13 +64,13 @@ func (middleware *Middleware) connect(
 			previousInterrupt := interrupt
 			accessToken = newAccessToken
 			interrupt = make(chan struct{})
-			done = middleware.ShellInterface.Listen(u, newAccessToken, middleware.PTYManager.Out(), &interrupt)
+			done = middleware.RemoteTerminal.Listen(u, newAccessToken, middleware.PTYManager.Out(), &interrupt)
 			close(previousInterrupt)
-		case shellIO := <-middleware.ShellInterface.Out():
+		case shellIO := <-middleware.RemoteTerminal.Out():
 			go middleware.PTYManager.Execute(shellIO)
-		case command := <-middleware.ShellInterface.Commands():
+		case command := <-middleware.RemoteTerminal.Commands():
 			middleware.PTYManager.ExecutePredefinedCommand(command)
-		case err := <-middleware.ShellInterface.Errs():
+		case err := <-middleware.RemoteTerminal.Errs():
 			log.Println(err)
 			go middleware.setConnection(false)
 			done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), &interrupt)
@@ -95,7 +95,7 @@ func (middleware *Middleware) reconnect(
 	interrupt *chan struct{},
 ) <-chan struct{} {
 	time.Sleep(5 * time.Second)
-	return middleware.ShellInterface.Listen(u, accessToken, in, interrupt)
+	return middleware.RemoteTerminal.Listen(u, accessToken, in, interrupt)
 }
 
 // CreateMiddleware is the factory to create a properly instantiated middleware.

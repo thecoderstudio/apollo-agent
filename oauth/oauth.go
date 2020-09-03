@@ -18,6 +18,7 @@ type AccessToken struct {
 	TokenType   string `json:"token_type"`
 }
 
+// AuthProvider is an interface for getting an OAuth access token.
 type AuthProvider interface {
 	GetAccessToken() (AccessToken, error)
 	GetContinuousAccessToken() (*chan AccessToken, *chan error)

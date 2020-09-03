@@ -7,6 +7,8 @@ import (
 // NewConnection command to open a new connection and PTY session
 const NewConnection = "new connection"
 
+// ShellManager is an interface that allows for PTY session
+// management and command execution.
 type ShellManager interface {
 	Out() <-chan websocket.ShellIO
 	ExecutePredefinedCommand(websocket.Command)
@@ -24,6 +26,7 @@ type Manager struct {
 	out      chan websocket.ShellIO
 }
 
+// Out returns all output of the PTY session(s) through a channel.
 func (manager Manager) Out() <-chan websocket.ShellIO {
 	return manager.out
 }
