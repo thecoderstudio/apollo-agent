@@ -53,9 +53,7 @@ func (middleware *Middleware) connect(
 	accessToken oauth.AccessToken,
 ) {
 	u := url.URL{Scheme: "ws", Host: middleware.Host, Path: "/ws"}
-
 	interrupt := make(chan struct{})
-
 	defer middleware.PTYManager.Close()
 
 	done := middleware.ShellInterface.Listen(u, accessToken, middleware.PTYManager.Out(), &interrupt)
@@ -74,15 +72,12 @@ func (middleware *Middleware) connect(
 			middleware.PTYManager.ExecutePredefinedCommand(command)
 		case err := <-middleware.ShellInterface.Errs():
 			log.Println(err)
-			done = nil
-			middleware.setConnection(false)
+			go middleware.setConnection(false)
 			done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), &interrupt)
-			log.Println("reconnect")
-			middleware.setConnection(true)
+			go middleware.setConnection(true)
 		case <-*middleware.InterruptSignal:
 			close(interrupt)
 		case <-done:
-			log.Println("done")
 			go middleware.setConnection(false)
 			return
 		}
