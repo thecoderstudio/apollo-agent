@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/jessevdk/go-flags"
 
@@ -12,10 +13,11 @@ import (
 )
 
 var opts struct {
-	Host    string `short:"h" long:"host" description:"Host address" required:"true"`
-	AgentID string `long:"agent-id" description:"Apollo agent id" required:"true"`
-	Secret  string `long:"secret" description:"Apollo OAuth client secret" required:"true"`
-	Shell   string `long:"shell" description:"Path to shell" default:"/bin/bash"`
+	Host              string `short:"h" long:"host" description:"Host address" required:"true"`
+	AgentID           string `long:"agent-id" description:"Apollo agent id" required:"true"`
+	Secret            string `long:"secret" description:"Apollo OAuth client secret" required:"true"`
+	Shell             string `long:"shell" description:"Path to shell" default:"/bin/bash"`
+	ReconnectInterval int    `short:"i" long:"reconnect-interval" description:"Interval in seconds between reconnection attempts default:5"`
 }
 
 func main() {
@@ -34,7 +36,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	middleware.Start()
+	reconnectInterval := time.Duration(opts.ReconnectInterval) * time.Second
+
+	middleware.Start(reconnectInterval)
 }
 
 func parseArguments() {

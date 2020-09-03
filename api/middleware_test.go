@@ -5,6 +5,7 @@ import (
 	"os"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -12,6 +13,7 @@ import (
 	"github.com/thecoderstudio/apollo-agent/api"
 	"github.com/thecoderstudio/apollo-agent/mocks"
 	"github.com/thecoderstudio/apollo-agent/oauth"
+	"github.com/thecoderstudio/apollo-agent/pty"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
@@ -43,23 +45,13 @@ func TestMiddleware(t *testing.T) {
 		close(done)
 	})
 
-	middleware := api.Middleware{
-		Host:            "localhost:8080",
-		InterruptSignal: &interruptSignal,
-		RemoteTerminal:  remoteTerminalMock,
-		PTYManager:      shellManagerMock,
-		OAuthClient:     authProviderMock,
-	}
+	stopped := startMiddleware(&interruptSignal, remoteTerminalMock, shellManagerMock, authProviderMock)
 
-	notify := make(chan struct{})
-	go func() {
-		middleware.Start()
-		close(notify)
-	}()
 	accessTokenChan <- accessToken
 	commands <- command
 	out <- shellIO
-	<-notify
+	<-stopped
+
 	shellManagerMock.AssertExpectations(t)
 }
 
@@ -92,22 +84,12 @@ func TestReAuthentication(t *testing.T) {
 	shellManagerMock.On("Close")
 	shellManagerMock.On("Out").Return(make(<-chan websocket.ShellIO))
 
-	middleware := api.Middleware{
-		Host:            "localhost:8080",
-		InterruptSignal: &interruptSignal,
-		RemoteTerminal:  remoteTerminalMock,
-		PTYManager:      shellManagerMock,
-		OAuthClient:     authProviderMock,
-	}
+	stopped := startMiddleware(&interruptSignal, remoteTerminalMock, shellManagerMock, authProviderMock)
 
-	notify := make(chan struct{})
-	go func() {
-		middleware.Start()
-		close(notify)
-	}()
 	accessTokenChan <- initialAccessToken
 	accessTokenChan <- secondAccessToken
-	<-notify
+
+	<-stopped
 	remoteTerminalMock.AssertExpectations(t)
 }
 
@@ -124,21 +106,9 @@ func TestAuthenticationFailure(t *testing.T) {
 
 	shellManagerMock := new(mocks.ShellManager)
 
-	middleware := api.Middleware{
-		Host:            "localhost:8080",
-		InterruptSignal: &interruptSignal,
-		RemoteTerminal:  remoteTerminalMock,
-		PTYManager:      shellManagerMock,
-		OAuthClient:     authProviderMock,
-	}
-
-	notify := make(chan struct{})
-	go func() {
-		middleware.Start()
-		close(notify)
-	}()
+	stopped := startMiddleware(&interruptSignal, remoteTerminalMock, shellManagerMock, authProviderMock)
 	authErrs <- errors.New("test")
-	<-notify
+	<-stopped
 }
 
 func TestReconnect(t *testing.T) {
@@ -167,23 +137,12 @@ func TestReconnect(t *testing.T) {
 	shellManagerMock.On("Close")
 	shellManagerMock.On("Out").Return(make(<-chan websocket.ShellIO))
 
-	middleware := api.Middleware{
-		Host:            "localhost:8080",
-		InterruptSignal: &interruptSignal,
-		RemoteTerminal:  remoteTerminalMock,
-		PTYManager:      shellManagerMock,
-		OAuthClient:     authProviderMock,
-	}
+	stopped := startMiddleware(&interruptSignal, remoteTerminalMock, shellManagerMock, authProviderMock)
 
-	notify := make(chan struct{})
-	go func() {
-		middleware.Start()
-		close(notify)
-	}()
 	accessTokenChan <- accessToken
 
 	connErrs <- errors.New("test")
-	<-notify
+	<-stopped
 }
 
 func TestCreateMiddleware(t *testing.T) {
@@ -218,6 +177,28 @@ func createRemoteTerminalMock(
 	remoteTerminalMock.On("Commands").Return(commands)
 	remoteTerminalMock.On("Errs").Return(errs)
 	return remoteTerminalMock
+}
+
+func startMiddleware(
+	interruptSignal *chan os.Signal,
+	remoteTerminal websocket.RemoteTerminal,
+	ptyManager pty.ShellManager,
+	oauthClient oauth.AuthProvider,
+) chan struct{} {
+	middleware := api.Middleware{
+		Host:            "localhost:8080",
+		InterruptSignal: interruptSignal,
+		RemoteTerminal:  remoteTerminal,
+		PTYManager:      ptyManager,
+		OAuthClient:     oauthClient,
+	}
+
+	stopped := make(chan struct{})
+	go func() {
+		middleware.Start(1 * time.Second)
+		close(stopped)
+	}()
+	return stopped
 }
 
 func createDoneChannels() (chan struct{}, <-chan struct{}) {

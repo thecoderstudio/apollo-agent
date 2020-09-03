@@ -22,13 +22,13 @@ type Middleware struct {
 
 // Start starts the communication with the API by authenticating and maintaining the connection. Incoming websocket
 // commands will be forwarded to the manager.
-func (middleware *Middleware) Start() error {
+func (middleware *Middleware) Start(reconnectInterval time.Duration) error {
 	accessTokenChan, initialToken, err := middleware.authenticate()
 	if err != nil {
 		return err
 	}
 
-	middleware.connect(accessTokenChan, initialToken)
+	middleware.connect(accessTokenChan, initialToken, reconnectInterval)
 	return nil
 }
 
@@ -50,6 +50,7 @@ func (middleware *Middleware) authenticate() (*chan oauth.AccessToken, oauth.Acc
 func (middleware *Middleware) connect(
 	accessTokenChan *chan oauth.AccessToken,
 	accessToken oauth.AccessToken,
+	reconnectInterval time.Duration,
 ) {
 	u := url.URL{Scheme: "ws", Host: middleware.Host, Path: "/ws"}
 	interrupt := make(chan struct{})
@@ -71,7 +72,7 @@ func (middleware *Middleware) connect(
 			middleware.PTYManager.ExecutePredefinedCommand(command)
 		case err := <-middleware.RemoteTerminal.Errs():
 			log.Println(err)
-			done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), &interrupt)
+			done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), &interrupt, reconnectInterval)
 		case <-*middleware.InterruptSignal:
 			close(interrupt)
 		case <-done:
@@ -85,8 +86,9 @@ func (middleware *Middleware) reconnect(
 	accessToken oauth.AccessToken,
 	in <-chan websocket.ShellIO,
 	interrupt *chan struct{},
+	reconnectInterval time.Duration,
 ) <-chan struct{} {
-	time.Sleep(5 * time.Second)
+	time.Sleep(reconnectInterval)
 	return middleware.RemoteTerminal.Listen(u, accessToken, in, interrupt)
 }
 
