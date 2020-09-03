@@ -18,16 +18,13 @@ import (
 
 func TestMiddleware(t *testing.T) {
 	interruptSignal := make(chan os.Signal, 1)
-	accessTokenChan := make(chan oauth.AccessToken)
-	authErrs := make(chan error)
-	authProviderMock := new(mocks.AuthProvider)
-	authProviderMock.On("GetContinuousAccessToken").Return(&accessTokenChan, &authErrs)
-
+	authProviderMock, accessTokenChan, _ := createAuthProviderMock()
 	accessToken := oauth.AccessToken{
 		AccessToken: "",
 		ExpiresIn:   3600,
 		TokenType:   "",
 	}
+
 	done, readOnlyDone := createDoneChannels()
 	out, readOnlyOut := createShellIOChannels()
 	commands, readOnlyCommands := createCommandChannels()
@@ -69,11 +66,7 @@ func TestMiddleware(t *testing.T) {
 
 func TestReAuthentication(t *testing.T) {
 	interruptSignal := make(chan os.Signal, 1)
-	accessTokenChan := make(chan oauth.AccessToken)
-	authErrs := make(chan error)
-	authProviderMock := new(mocks.AuthProvider)
-	authProviderMock.On("GetContinuousAccessToken").Return(&accessTokenChan, &authErrs)
-
+	authProviderMock, accessTokenChan, _ := createAuthProviderMock()
 	initialAccessToken := oauth.AccessToken{
 		AccessToken: "initial",
 		ExpiresIn:   3600,
@@ -84,6 +77,7 @@ func TestReAuthentication(t *testing.T) {
 		ExpiresIn:   3600,
 		TokenType:   "",
 	}
+
 	done, readOnlyDone := createDoneChannels()
 	_, readOnlyOut := createShellIOChannels()
 	_, readOnlyCommands := createCommandChannels()
@@ -120,10 +114,7 @@ func TestReAuthentication(t *testing.T) {
 
 func TestAuthenticationFailure(t *testing.T) {
 	interruptSignal := make(chan os.Signal, 1)
-	accessTokenChan := make(chan oauth.AccessToken)
-	authErrs := make(chan error)
-	authProviderMock := new(mocks.AuthProvider)
-	authProviderMock.On("GetContinuousAccessToken").Return(&accessTokenChan, &authErrs)
+	authProviderMock, _, authErrs := createAuthProviderMock()
 
 	_, readOnlyDone := createDoneChannels()
 	_, readOnlyOut := createShellIOChannels()
@@ -153,16 +144,13 @@ func TestAuthenticationFailure(t *testing.T) {
 
 func TestReconnect(t *testing.T) {
 	interruptSignal := make(chan os.Signal, 1)
-	accessTokenChan := make(chan oauth.AccessToken)
-	authErrs := make(chan error)
-	authProviderMock := new(mocks.AuthProvider)
-	authProviderMock.On("GetContinuousAccessToken").Return(&accessTokenChan, &authErrs)
-
+	authProviderMock, accessTokenChan, _ := createAuthProviderMock()
 	accessToken := oauth.AccessToken{
 		AccessToken: "initial",
 		ExpiresIn:   3600,
 		TokenType:   "",
 	}
+
 	done, readOnlyDone := createDoneChannels()
 	_, readOnlyOut := createShellIOChannels()
 	_, readOnlyCommands := createCommandChannels()
@@ -215,6 +203,14 @@ func TestCreateMiddlewareInvalidShell(t *testing.T) {
 	interruptSignal := make(chan os.Signal, 1)
 	_, err := api.CreateMiddleware("", "", "", "", &interruptSignal)
 	assert.Error(t, err)
+}
+
+func createAuthProviderMock() (*mocks.AuthProvider, chan oauth.AccessToken, chan error) {
+	errs := make(chan error)
+	accessTokenChan := make(chan oauth.AccessToken)
+	authProviderMock := new(mocks.AuthProvider)
+	authProviderMock.On("GetContinuousAccessToken").Return(&accessTokenChan, &errs)
+	return authProviderMock, accessTokenChan, errs
 }
 
 func createRemoteTerminalMock(
