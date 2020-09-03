@@ -18,7 +18,6 @@ type Middleware struct {
 	RemoteTerminal  websocket.RemoteTerminal
 	PTYManager      pty.ShellManager
 	OAuthClient     oauth.AuthProvider
-	Connected       chan bool
 }
 
 // Start starts the communication with the API by authenticating and maintaining the connection. Incoming websocket
@@ -72,20 +71,13 @@ func (middleware *Middleware) connect(
 			middleware.PTYManager.ExecutePredefinedCommand(command)
 		case err := <-middleware.RemoteTerminal.Errs():
 			log.Println(err)
-			go middleware.setConnection(false)
 			done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), &interrupt)
-			go middleware.setConnection(true)
 		case <-*middleware.InterruptSignal:
 			close(interrupt)
 		case <-done:
-			go middleware.setConnection(false)
 			return
 		}
 	}
-}
-
-func (middleware *Middleware) setConnection(connected bool) {
-	middleware.Connected <- connected
 }
 
 func (middleware *Middleware) reconnect(
@@ -108,7 +100,6 @@ func CreateMiddleware(host, agentID, secret, shell string, interruptSignal *chan
 
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
 	oauthClient := oauth.Create(host, agentID, secret)
-	connected := make(chan bool)
-	middleware = Middleware{host, interruptSignal, wsClient, ptyManager, oauthClient, connected}
+	middleware = Middleware{host, interruptSignal, wsClient, ptyManager, oauthClient}
 	return middleware, err
 }

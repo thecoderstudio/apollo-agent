@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"syscall"
 	"testing"
@@ -157,7 +156,12 @@ func TestReconnect(t *testing.T) {
 	connErrs, readOnlyConnErrs := createErrChannels()
 
 	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
-	remoteTerminalMock.On("Listen", mock.Anything, accessToken, mock.Anything, mock.Anything).Return(readOnlyDone)
+	remoteTerminalMock.On("Listen", mock.Anything, accessToken, mock.Anything, mock.Anything).Return(readOnlyDone).Once()
+	remoteTerminalMock.On("Listen", mock.Anything, accessToken, mock.Anything, mock.Anything).Return(readOnlyDone).Once().Run(
+		func(args mock.Arguments) {
+			close(done)
+		},
+	)
 
 	shellManagerMock := new(mocks.ShellManager)
 	shellManagerMock.On("Close")
@@ -169,7 +173,6 @@ func TestReconnect(t *testing.T) {
 		RemoteTerminal:  remoteTerminalMock,
 		PTYManager:      shellManagerMock,
 		OAuthClient:     authProviderMock,
-		Connected:       make(chan bool),
 	}
 
 	notify := make(chan struct{})
@@ -179,15 +182,6 @@ func TestReconnect(t *testing.T) {
 	}()
 	accessTokenChan <- accessToken
 
-	go func() {
-		for {
-			connected := <-middleware.Connected
-			fmt.Println(connected)
-			if connected {
-				close(done)
-			}
-		}
-	}()
 	connErrs <- errors.New("test")
 	<-notify
 }
