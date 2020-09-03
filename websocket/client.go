@@ -153,7 +153,6 @@ func (client *Client) handleEvents(connection *Connection, in <-chan ShellIO,
 		case <-*doneListening:
 			return nil
 		case message := <-in:
-			log.Println(message)
 			conn := *connection
 			jsonMessage, _ := json.Marshal(message)
 			conn.WriteMessage(websocket.TextMessage, jsonMessage)
