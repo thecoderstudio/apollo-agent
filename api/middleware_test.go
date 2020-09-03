@@ -211,6 +211,12 @@ func TestCreateMiddleware(t *testing.T) {
 	assert.NotNil(t, middleware)
 }
 
+func TestCreateMiddlewareInvalidShell(t *testing.T) {
+	interruptSignal := make(chan os.Signal, 1)
+	_, err := api.CreateMiddleware("", "", "", "", &interruptSignal)
+	assert.Error(t, err)
+}
+
 func createRemoteTerminalMock(
 	done <-chan struct{},
 	out <-chan websocket.ShellIO,
