@@ -18,11 +18,7 @@ type Middleware struct {
 	ShellInterface  websocket.ShellInterface
 	PTYManager      pty.ShellManager
 	OAuthClient     oauth.AuthProvider
-	connected       chan bool
-}
-
-func (middleware *Middleware) Connected() <-chan bool {
-	return middleware.connected
+	Connected       chan bool
 }
 
 // Start starts the communication with the API by authenticating and maintaining the connection. Incoming websocket
@@ -79,17 +75,14 @@ func (middleware *Middleware) connect(
 		case err := <-middleware.ShellInterface.Errs():
 			log.Println(err)
 			done = nil
-			go middleware.setConnection(false)
-			go func() {
-				done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), &interrupt)
-				go middleware.setConnection(true)
-			}()
+			middleware.setConnection(false)
+			done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), &interrupt)
+			log.Println("reconnect")
+			middleware.setConnection(true)
 		case <-*middleware.InterruptSignal:
 			close(interrupt)
-			if done == nil {
-				return
-			}
 		case <-done:
+			log.Println("done")
 			go middleware.setConnection(false)
 			return
 		}
@@ -97,7 +90,7 @@ func (middleware *Middleware) connect(
 }
 
 func (middleware *Middleware) setConnection(connected bool) {
-	middleware.connected <- connected
+	middleware.Connected <- connected
 }
 
 func (middleware *Middleware) reconnect(

@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"syscall"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/thecoderstudio/apollo-agent/api"
@@ -41,6 +43,7 @@ func TestMiddleware(t *testing.T) {
 	shellManagerMock.On("Out").Return(make(<-chan websocket.ShellIO))
 	shellManagerMock.On("ExecutePredefinedCommand", command)
 	shellManagerMock.On("Execute", shellIO).Run(func(arguments mock.Arguments) {
+		interruptSignal <- syscall.SIGINT
 		close(done)
 	})
 
@@ -163,7 +166,7 @@ func TestReconnect(t *testing.T) {
 	done, readOnlyDone := createDoneChannels()
 	_, readOnlyOut := createShellIOChannels()
 	_, readOnlyCommands := createCommandChannels()
-	_, readOnlyConnErrs := createErrChannels()
+	connErrs, readOnlyConnErrs := createErrChannels()
 
 	shellInterfaceMock := createShellInterfaceMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
 	shellInterfaceMock.On("Listen", mock.Anything, accessToken, mock.Anything, mock.Anything).Return(readOnlyDone)
@@ -178,6 +181,7 @@ func TestReconnect(t *testing.T) {
 		ShellInterface:  shellInterfaceMock,
 		PTYManager:      shellManagerMock,
 		OAuthClient:     authProviderMock,
+		Connected:       make(chan bool),
 	}
 
 	notify := make(chan struct{})
@@ -189,15 +193,21 @@ func TestReconnect(t *testing.T) {
 
 	go func() {
 		for {
-			connected := <-middleware.Connected()
+			connected := <-middleware.Connected
 			fmt.Println(connected)
 			if connected {
-				return
+				close(done)
 			}
 		}
 	}()
-	close(done)
+	connErrs <- errors.New("test")
 	<-notify
+}
+
+func TestCreateMiddleware(t *testing.T) {
+	interruptSignal := make(chan os.Signal, 1)
+	middleware := api.CreateMiddleware("", "", "", "", &interruptSignal)
+	assert.NotNil(t, middleware)
 }
 
 func createShellInterfaceMock(
