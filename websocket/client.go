@@ -169,7 +169,6 @@ func (client *Client) handleEvents(
 			jsonMessage, _ := json.Marshal(message)
 			conn.WriteMessage(websocket.TextMessage, jsonMessage)
 		case <-client.interrupt:
-			log.Println("interrupt")
 			client.interrupted = true
 			err := client.closeConnection(connection)
 			return err
