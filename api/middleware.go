@@ -88,7 +88,17 @@ func (middleware *Middleware) reconnect(
 	in <-chan websocket.ShellIO,
 	reconnectInterval time.Duration,
 ) (<-chan struct{}, bool) {
-	reconnect, interrupted := make(chan struct{}), make(chan struct{})
+	timerEnded, interrupted := middleware.startInterruptableTimer(reconnectInterval)
+	select {
+	case <-interrupted:
+		return nil, true
+	case <-timerEnded:
+		return middleware.RemoteTerminal.Listen(u, accessToken, in), false
+	}
+}
+
+func (middleware *Middleware) startInterruptableTimer(duration time.Duration) (<-chan struct{}, <-chan struct{}) {
+	ended, interrupted := make(chan struct{}), make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(500 * time.Millisecond)
 		go func() {
@@ -98,21 +108,16 @@ func (middleware *Middleware) reconnect(
 					close(interrupted)
 				case <-ticker.C:
 					continue
-				case <-reconnect:
+				case <-ended:
 					return
 				}
 			}
 		}()
-		time.Sleep(reconnectInterval)
+		time.Sleep(duration)
 		ticker.Stop()
-		close(reconnect)
+		close(ended)
 	}()
-	select {
-	case <-interrupted:
-		return nil, true
-	case <-reconnect:
-		return middleware.RemoteTerminal.Listen(u, accessToken, in), false
-	}
+	return ended, interrupted
 }
 
 // CreateMiddleware is the factory to create a properly instantiated middleware.
