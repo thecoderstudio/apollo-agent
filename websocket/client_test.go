@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	gorilla "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
@@ -183,6 +184,33 @@ func (suite *ClientTestSuite) TestWriteMessage() {
 	assert.NotNil(suite.T(), <-done)
 	mockConn.AssertExpectations(suite.T())
 
+}
+
+func (suite *ClientTestSuite) TestInterrupt() {
+	in := make(chan websocket.ShellIO)
+	errSent := make(chan time.Time)
+	defer close(in)
+
+	mockConn := new(ConnMock)
+	wsClient := createWsClient(mockConn)
+
+	mockConn.On("Close").Return(nil)
+	mockConn.On("ReadMessage").Return(0, nil, errors.New("read error")).Run(func(args mock.Arguments) {
+		errSent <- time.Now()
+	})
+	mockConn.On(
+		"WriteMessage",
+		gorilla.CloseMessage,
+		gorilla.FormatCloseMessage(gorilla.CloseNormalClosure, ""),
+	).Return(nil).WaitUntil(errSent)
+
+	done := wsClient.Listen(u, oauth.AccessToken{}, in)
+
+	close(wsClient.Interrupt())
+
+	assert.NotNil(suite.T(), <-done)
+	assert.Empty(suite.T(), wsClient.Errs())
+	mockConn.AssertExpectations(suite.T())
 }
 
 func TestClientSuite(t *testing.T) {
