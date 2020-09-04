@@ -39,15 +39,18 @@ type RemoteTerminal interface {
 	Out() <-chan ShellIO
 	Commands() <-chan Command
 	Errs() <-chan error
-	Listen(url.URL, oauth.AccessToken, <-chan ShellIO, *chan struct{}) <-chan struct{}
+	Listen(url.URL, oauth.AccessToken, <-chan ShellIO) <-chan struct{}
+	Interrupt() chan struct{}
 }
 
 // Client is used to connect over the WebSocket protocol and receive as well as send messages.
 type Client struct {
-	dialer   Dialer
-	out      chan ShellIO
-	commands chan Command
-	errs     chan error
+	dialer      Dialer
+	out         chan ShellIO
+	commands    chan Command
+	errs        chan error
+	interrupt   chan struct{}
+	interrupted bool
 }
 
 // Out contains received shell messages.
@@ -65,15 +68,19 @@ func (client Client) Errs() <-chan error {
 	return client.errs
 }
 
+func (client Client) Interrupt() chan struct{} {
+	return client.interrupt
+}
+
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
 // by closing the interrupt channel. Outgoing communication send through `in` are sent to Apollo.
 func (client Client) Listen(
 	endpointURL url.URL,
 	accessToken oauth.AccessToken,
 	in <-chan ShellIO,
-	interrupt *chan struct{},
 ) <-chan struct{} {
 	done := make(chan struct{})
+	client.interrupted = false
 
 	go func() {
 		connection, err := client.createConnection(endpointURL, accessToken)
@@ -89,7 +96,7 @@ func (client Client) Listen(
 		doneListening := make(chan struct{})
 
 		go client.awaitMessages(&connection, &done, &doneListening)
-		err = client.handleEvents(&connection, in, &doneListening, interrupt)
+		err = client.handleEvents(&connection, in, &doneListening)
 
 		connection.Close()
 		close(done)
@@ -118,6 +125,9 @@ func (client *Client) awaitMessages(connection *Connection, done, doneListening 
 		default:
 			_, rawMessage, err := conn.ReadMessage()
 			if err != nil {
+				if client.interrupted {
+					return
+				}
 				log.Println("read error:", err)
 				client.errs <- err
 				return
@@ -145,9 +155,11 @@ func (client *Client) sendOverChannels(rawMessage []byte) {
 	}
 }
 
-func (client *Client) handleEvents(connection *Connection, in <-chan ShellIO,
+func (client *Client) handleEvents(
+	connection *Connection,
+	in <-chan ShellIO,
 	doneListening *chan struct{},
-	interrupt *chan struct{}) error {
+) error {
 	for {
 		select {
 		case <-*doneListening:
@@ -156,8 +168,9 @@ func (client *Client) handleEvents(connection *Connection, in <-chan ShellIO,
 			conn := *connection
 			jsonMessage, _ := json.Marshal(message)
 			conn.WriteMessage(websocket.TextMessage, jsonMessage)
-		case <-*interrupt:
+		case <-client.interrupt:
 			log.Println("interrupt")
+			client.interrupted = true
 			err := client.closeConnection(connection)
 			return err
 		}
@@ -183,5 +196,6 @@ func CreateClient(dialer Dialer) Client {
 	out := make(chan ShellIO)
 	commands := make(chan Command)
 	errs := make(chan error)
-	return Client{dialer, out, commands, errs}
+	interrupt := make(chan struct{})
+	return Client{dialer, out, commands, errs, interrupt, false}
 }

@@ -53,28 +53,25 @@ func (middleware *Middleware) connect(
 	reconnectInterval time.Duration,
 ) {
 	u := url.URL{Scheme: "ws", Host: middleware.Host, Path: "/ws"}
-	interrupt := make(chan struct{})
 	defer middleware.PTYManager.Close()
 
-	done := middleware.RemoteTerminal.Listen(u, accessToken, middleware.PTYManager.Out(), &interrupt)
+	done := middleware.RemoteTerminal.Listen(u, accessToken, middleware.PTYManager.Out())
 
 	for {
 		select {
 		case newAccessToken := <-*accessTokenChan:
-			previousInterrupt := interrupt
 			accessToken = newAccessToken
-			interrupt = make(chan struct{})
-			done = middleware.RemoteTerminal.Listen(u, newAccessToken, middleware.PTYManager.Out(), &interrupt)
-			close(previousInterrupt)
+			middleware.RemoteTerminal.Interrupt() <- struct{}{}
+			done = middleware.RemoteTerminal.Listen(u, newAccessToken, middleware.PTYManager.Out())
 		case shellIO := <-middleware.RemoteTerminal.Out():
 			go middleware.PTYManager.Execute(shellIO)
 		case command := <-middleware.RemoteTerminal.Commands():
 			middleware.PTYManager.ExecutePredefinedCommand(command)
 		case err := <-middleware.RemoteTerminal.Errs():
 			log.Println(err)
-			done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), &interrupt, reconnectInterval)
+			done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), reconnectInterval)
 		case <-*middleware.InterruptSignal:
-			close(interrupt)
+			close(middleware.RemoteTerminal.Interrupt())
 		case <-done:
 			return
 		}
@@ -85,11 +82,10 @@ func (middleware *Middleware) reconnect(
 	u url.URL,
 	accessToken oauth.AccessToken,
 	in <-chan websocket.ShellIO,
-	interrupt *chan struct{},
 	reconnectInterval time.Duration,
 ) <-chan struct{} {
 	time.Sleep(reconnectInterval)
-	return middleware.RemoteTerminal.Listen(u, accessToken, in, interrupt)
+	return middleware.RemoteTerminal.Listen(u, accessToken, in)
 }
 
 // CreateMiddleware is the factory to create a properly instantiated middleware.
