@@ -17,7 +17,7 @@ var opts struct {
 	AgentID           string `long:"agent-id" description:"Apollo agent id" required:"true"`
 	Secret            string `long:"secret" description:"Apollo OAuth client secret" required:"true"`
 	Shell             string `long:"shell" description:"Path to shell" default:"/bin/bash"`
-	ReconnectInterval int    `short:"i" long:"reconnect-interval" description:"Interval in seconds between reconnection attempts default:5"`
+	ReconnectInterval int    `short:"i" long:"reconnect-interval" description:"Interval in seconds between reconnection attempts" default:"5"`
 }
 
 func main() {

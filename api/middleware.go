@@ -69,7 +69,11 @@ func (middleware *Middleware) connect(
 			middleware.PTYManager.ExecutePredefinedCommand(command)
 		case err := <-middleware.RemoteTerminal.Errs():
 			log.Println(err)
-			done = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), reconnectInterval)
+			var interrupted bool
+			done, interrupted = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), reconnectInterval)
+			if interrupted {
+				return
+			}
 		case <-*middleware.InterruptSignal:
 			close(middleware.RemoteTerminal.Interrupt())
 		case <-done:
@@ -83,9 +87,32 @@ func (middleware *Middleware) reconnect(
 	accessToken oauth.AccessToken,
 	in <-chan websocket.ShellIO,
 	reconnectInterval time.Duration,
-) <-chan struct{} {
-	time.Sleep(reconnectInterval)
-	return middleware.RemoteTerminal.Listen(u, accessToken, in)
+) (<-chan struct{}, bool) {
+	reconnect, interrupted := make(chan struct{}), make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		go func() {
+			for {
+				select {
+				case <-*middleware.InterruptSignal:
+					close(interrupted)
+				case <-ticker.C:
+					continue
+				case <-reconnect:
+					return
+				}
+			}
+		}()
+		time.Sleep(reconnectInterval)
+		ticker.Stop()
+		close(reconnect)
+	}()
+	select {
+	case <-interrupted:
+		return nil, true
+	case <-reconnect:
+		return middleware.RemoteTerminal.Listen(u, accessToken, in), false
+	}
 }
 
 // CreateMiddleware is the factory to create a properly instantiated middleware.
