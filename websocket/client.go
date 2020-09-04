@@ -68,6 +68,8 @@ func (client Client) Errs() <-chan error {
 	return client.errs
 }
 
+// Interrupt allows for the interruption of the listening of the client. You can do this by
+// sending a message to the channel returned by Interrupt or by simply closing it.
 func (client Client) Interrupt() chan struct{} {
 	return client.interrupt
 }
