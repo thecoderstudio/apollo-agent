@@ -48,13 +48,29 @@ func (_m *RemoteTerminal) Errs() <-chan error {
 	return r0
 }
 
-// Listen provides a mock function with given fields: _a0, _a1, _a2, _a3
-func (_m *RemoteTerminal) Listen(_a0 url.URL, _a1 oauth.AccessToken, _a2 <-chan websocket.ShellIO, _a3 *chan struct{}) <-chan struct{} {
-	ret := _m.Called(_a0, _a1, _a2, _a3)
+// Interrupt provides a mock function with given fields:
+func (_m *RemoteTerminal) Interrupt() chan struct{} {
+	ret := _m.Called()
+
+	var r0 chan struct{}
+	if rf, ok := ret.Get(0).(func() chan struct{}); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(chan struct{})
+		}
+	}
+
+	return r0
+}
+
+// Listen provides a mock function with given fields: _a0, _a1, _a2
+func (_m *RemoteTerminal) Listen(_a0 url.URL, _a1 oauth.AccessToken, _a2 <-chan websocket.ShellIO) <-chan struct{} {
+	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 <-chan struct{}
-	if rf, ok := ret.Get(0).(func(url.URL, oauth.AccessToken, <-chan websocket.ShellIO, *chan struct{}) <-chan struct{}); ok {
-		r0 = rf(_a0, _a1, _a2, _a3)
+	if rf, ok := ret.Get(0).(func(url.URL, oauth.AccessToken, <-chan websocket.ShellIO) <-chan struct{}); ok {
+		r0 = rf(_a0, _a1, _a2)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(<-chan struct{})
