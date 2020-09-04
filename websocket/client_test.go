@@ -77,6 +77,12 @@ type ClientTestSuite struct {
 	suite.Suite
 }
 
+func TestDialWrapperDialError(t *testing.T) {
+	dialWrapper := websocket.DialWrapper{}
+	_, _, err := dialWrapper.Dial("faulty input", http.Header{})
+	assert.Error(t, err)
+}
+
 func (suite *ClientTestSuite) TestListenForShellIOSuccess() {
 	in := make(chan websocket.ShellIO)
 	defer close(in)

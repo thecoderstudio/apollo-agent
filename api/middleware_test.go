@@ -153,6 +153,36 @@ func TestReconnect(t *testing.T) {
 	<-stopped
 }
 
+func TestReconnectInterrupt(t *testing.T) {
+	interruptSignal := make(chan os.Signal, 1)
+	authProviderMock, accessTokenChan, _ := createAuthProviderMock()
+	accessToken := oauth.AccessToken{
+		AccessToken: "initial",
+		ExpiresIn:   3600,
+		TokenType:   "",
+	}
+
+	_, readOnlyDone := createDoneChannels()
+	_, readOnlyOut := createShellIOChannels()
+	_, readOnlyCommands := createCommandChannels()
+	connErrs, readOnlyConnErrs := createErrChannels()
+
+	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock.On("Listen", mock.Anything, accessToken, mock.Anything).Return(readOnlyDone).Once()
+
+	shellManagerMock := new(mocks.ShellManager)
+	shellManagerMock.On("Close")
+	shellManagerMock.On("Out").Return(make(<-chan websocket.ShellIO))
+
+	stopped := startMiddleware(&interruptSignal, remoteTerminalMock, shellManagerMock, authProviderMock)
+
+	accessTokenChan <- accessToken
+
+	connErrs <- errors.New("test")
+	interruptSignal <- syscall.SIGINT
+	<-stopped
+}
+
 func TestCreateMiddleware(t *testing.T) {
 	interruptSignal := make(chan os.Signal, 1)
 	middleware, err := api.CreateMiddleware("", "", "", "/bin/bash", &interruptSignal)
