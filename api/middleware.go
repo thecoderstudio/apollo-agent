@@ -60,6 +60,7 @@ func (middleware *Middleware) connect(
 	for {
 		select {
 		case newAccessToken := <-*accessTokenChan:
+			log.Println("Reauthenticating..")
 			accessToken = newAccessToken
 			middleware.RemoteTerminal.Interrupt() <- struct{}{}
 			done = middleware.RemoteTerminal.Listen(u, newAccessToken, middleware.PTYManager.Out())
@@ -88,6 +89,7 @@ func (middleware *Middleware) reconnect(
 	in <-chan websocket.ShellIO,
 	reconnectInterval time.Duration,
 ) (<-chan struct{}, bool) {
+	log.Println("Reconnecting..")
 	timerEnded, interrupted := middleware.startInterruptableTimer(reconnectInterval)
 	select {
 	case <-interrupted:

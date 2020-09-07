@@ -97,10 +97,12 @@ func (client Client) Listen(
 		// to prevent sending messages to closed channels.
 		doneListening := make(chan struct{})
 
+		log.Println("Connected")
 		go client.awaitMessages(&connection, &done, &doneListening)
 		err = client.handleEvents(&connection, in, &doneListening)
 
 		connection.Close()
+		log.Println("Disconnected")
 		close(done)
 		<-doneListening
 	}()
@@ -110,7 +112,7 @@ func (client Client) Listen(
 
 func (client *Client) createConnection(endpointURL url.URL, accessToken oauth.AccessToken) (Connection, error) {
 	urlString := endpointURL.String()
-	log.Printf("connecting to %s", urlString)
+	log.Printf("Connecting to %s", urlString)
 	authorizationHeader := fmt.Sprintf("%s %s", accessToken.TokenType, accessToken.AccessToken)
 	connection, _, err := client.dialer.Dial(urlString, http.Header{"Authorization": []string{authorizationHeader}})
 	return connection, err
@@ -130,7 +132,7 @@ func (client *Client) awaitMessages(connection *Connection, done, doneListening 
 				if client.interrupted {
 					return
 				}
-				log.Println("read error:", err)
+				log.Println("Read error:", err)
 				client.errs <- err
 				return
 			}
@@ -162,6 +164,7 @@ func (client *Client) handleEvents(
 	in <-chan ShellIO,
 	doneListening *chan struct{},
 ) error {
+	log.Println("Listening..")
 	for {
 		select {
 		case <-*doneListening:
@@ -171,6 +174,7 @@ func (client *Client) handleEvents(
 			jsonMessage, _ := json.Marshal(message)
 			conn.WriteMessage(websocket.TextMessage, jsonMessage)
 		case <-client.interrupt:
+			log.Println("Interrupted")
 			client.interrupted = true
 			err := client.closeConnection(connection)
 			return err
@@ -179,6 +183,7 @@ func (client *Client) handleEvents(
 }
 
 func (client *Client) closeConnection(connection *Connection) error {
+	log.Println("Shutting down gracefully")
 	conn := *connection
 	err := conn.WriteMessage(
 		websocket.CloseMessage,

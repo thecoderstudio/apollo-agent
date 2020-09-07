@@ -38,7 +38,10 @@ func main() {
 
 	reconnectInterval := time.Duration(opts.ReconnectInterval) * time.Second
 
-	middleware.Start(reconnectInterval)
+	err = middleware.Start(reconnectInterval)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func parseArguments() {
