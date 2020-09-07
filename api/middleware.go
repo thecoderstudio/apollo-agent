@@ -1,11 +1,11 @@
 package api
 
 import (
-	"log"
 	"net/url"
 	"os"
 	"time"
 
+	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/oauth"
 	"github.com/thecoderstudio/apollo-agent/pty"
 	"github.com/thecoderstudio/apollo-agent/websocket"
@@ -60,7 +60,7 @@ func (middleware *Middleware) connect(
 	for {
 		select {
 		case newAccessToken := <-*accessTokenChan:
-			log.Println("Reauthenticating..")
+			logging.Info("Reauthenticating..")
 			accessToken = newAccessToken
 			middleware.RemoteTerminal.Interrupt() <- struct{}{}
 			done = middleware.RemoteTerminal.Listen(u, newAccessToken, middleware.PTYManager.Out())
@@ -69,7 +69,7 @@ func (middleware *Middleware) connect(
 		case command := <-middleware.RemoteTerminal.Commands():
 			middleware.PTYManager.ExecutePredefinedCommand(command)
 		case err := <-middleware.RemoteTerminal.Errs():
-			log.Println(err)
+			logging.Err(err)
 			var interrupted bool
 			done, interrupted = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), reconnectInterval)
 			if interrupted {
@@ -89,7 +89,7 @@ func (middleware *Middleware) reconnect(
 	in <-chan websocket.ShellIO,
 	reconnectInterval time.Duration,
 ) (<-chan struct{}, bool) {
-	log.Println("Reconnecting..")
+	logging.Info("Reconnecting..")
 	timerEnded, interrupted := middleware.startInterruptableTimer(reconnectInterval)
 	select {
 	case <-interrupted:
