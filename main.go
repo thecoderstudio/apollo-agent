@@ -30,12 +30,12 @@ func main() {
 
 	host := net.GetHostFromURLString(opts.Host)
 	if host == "" {
-		logging.Err("No valid host given")
+		logging.Critical("No valid host given")
 		return
 	}
 	middleware, err := api.CreateMiddleware(host, opts.AgentID, opts.Secret, opts.Shell, &interrupt)
 	if err != nil {
-		logging.Err(err)
+		logging.Critical(err)
 		return
 	}
 
@@ -43,7 +43,7 @@ func main() {
 
 	err = middleware.Start(reconnectInterval)
 	if err != nil {
-		logging.Err(err)
+		logging.Critical(err)
 		return
 	}
 }

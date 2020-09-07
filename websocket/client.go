@@ -89,7 +89,7 @@ func (client Client) Listen(
 	go func() {
 		connection, err := client.createConnection(endpointURL, accessToken)
 		if err != nil {
-			logging.Err("Connection error")
+			logging.Critical("Connection error")
 			client.errs <- err
 			close(done)
 			return
@@ -104,7 +104,7 @@ func (client Client) Listen(
 		err = client.handleEvents(&connection, in, &doneListening)
 
 		connection.Close()
-		logging.Err("Disconnected")
+		logging.Critical("Disconnected")
 		close(done)
 		<-doneListening
 	}()
@@ -134,7 +134,7 @@ func (client *Client) awaitMessages(connection *Connection, done, doneListening 
 				if client.interrupted {
 					return
 				}
-				logging.Err("Read error", err)
+				logging.Critical("Read error", err)
 				client.errs <- err
 				return
 			}
@@ -192,7 +192,7 @@ func (client *Client) closeConnection(connection *Connection) error {
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
 	)
 	if err != nil {
-		logging.Err("Close err:", err)
+		logging.Critical("Close err:", err)
 		return err
 	}
 

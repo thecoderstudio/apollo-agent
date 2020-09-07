@@ -68,7 +68,7 @@ func (manager Manager) CreateNewSession(sessionID string) (*Session, error) {
 	pty, err := CreateSession(sessionID, manager.Shell)
 	if err != nil {
 		manager.writeError(sessionID, err)
-		logging.Err(err)
+		logging.Critical(err)
 		pty.Close()
 		return nil, err
 	}

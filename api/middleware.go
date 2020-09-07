@@ -69,7 +69,7 @@ func (middleware *Middleware) connect(
 		case command := <-middleware.RemoteTerminal.Commands():
 			middleware.PTYManager.ExecutePredefinedCommand(command)
 		case err := <-middleware.RemoteTerminal.Errs():
-			logging.Err(err)
+			logging.Critical(err)
 			var interrupted bool
 			done, interrupted = middleware.reconnect(u, accessToken, middleware.PTYManager.Out(), reconnectInterval)
 			if interrupted {

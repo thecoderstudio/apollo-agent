@@ -10,8 +10,8 @@ var err = color.New(color.FgRed)
 var warning = color.New(color.FgYellow)
 var success = color.New(color.FgGreen)
 
-// Err is meant to log error messages
-func Err(message ...interface{}) {
+// Critical is meant to log error messages
+func Critical(message ...interface{}) {
 	err.Println(message...)
 }
 
