@@ -8,6 +8,8 @@ import (
 	"net/url"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/oauth"
 )
 
@@ -87,7 +89,7 @@ func (client Client) Listen(
 	go func() {
 		connection, err := client.createConnection(endpointURL, accessToken)
 		if err != nil {
-			log.Println("Connection error")
+			logging.Err("Connection error")
 			client.errs <- err
 			close(done)
 			return

@@ -9,6 +9,7 @@ import (
 	"github.com/jessevdk/go-flags"
 
 	"github.com/thecoderstudio/apollo-agent/api"
+	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/net"
 )
 
@@ -33,14 +34,16 @@ func main() {
 	}
 	middleware, err := api.CreateMiddleware(host, opts.AgentID, opts.Secret, opts.Shell, &interrupt)
 	if err != nil {
-		log.Fatal(err)
+		logging.Err(err.Error())
+		return
 	}
 
 	reconnectInterval := time.Duration(opts.ReconnectInterval) * time.Second
 
 	err = middleware.Start(reconnectInterval)
 	if err != nil {
-		log.Fatal(err)
+		logging.Err(err.Error())
+		return
 	}
 }
 
