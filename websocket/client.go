@@ -104,7 +104,7 @@ func (client Client) Listen(
 		err = client.handleEvents(&connection, in, &doneListening)
 
 		connection.Close()
-		logging.Warning("Disconnected")
+		logging.Err("Disconnected")
 		close(done)
 		<-doneListening
 	}()
@@ -176,7 +176,7 @@ func (client *Client) handleEvents(
 			jsonMessage, _ := json.Marshal(message)
 			conn.WriteMessage(websocket.TextMessage, jsonMessage)
 		case <-client.interrupt:
-			logging.Info("Interrupted")
+			logging.Warning("Interrupted")
 			client.interrupted = true
 			err := client.closeConnection(connection)
 			return err
