@@ -18,6 +18,12 @@ type AccessToken struct {
 	TokenType   string `json:"token_type"`
 }
 
+// AuthProvider is an interface for getting an OAuth access token.
+type AuthProvider interface {
+	GetAccessToken() (AccessToken, error)
+	GetContinuousAccessToken() (*chan AccessToken, *chan error)
+}
+
 // Client is responsible for getting an AccessToken through the OAuth protocol.
 type Client struct {
 	Host         string
@@ -27,7 +33,7 @@ type Client struct {
 }
 
 // GetAccessToken requests and returns an AccessToken.
-func (client *Client) GetAccessToken() (AccessToken, error) {
+func (client Client) GetAccessToken() (AccessToken, error) {
 	var accessToken AccessToken
 	url := url.URL{Scheme: "http", Host: client.Host, Path: "/oauth/token"}
 	authHeader := client.getAuthHeader()
@@ -65,7 +71,7 @@ func (client *Client) buildGrantTypeData() *bytes.Buffer {
 
 // GetContinuousAccessToken returns a channel over which an AccessToken will be sent.
 // When the AccessToken is 2 minutes to expiration a new one will get requested and sent.
-func (client *Client) GetContinuousAccessToken() (*chan AccessToken, *chan error) {
+func (client Client) GetContinuousAccessToken() (*chan AccessToken, *chan error) {
 	channel := make(chan AccessToken)
 	errs := make(chan error)
 	go client.keepTokenAlive(&channel, &errs, 120)

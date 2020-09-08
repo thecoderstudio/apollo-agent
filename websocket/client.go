@@ -33,6 +33,15 @@ func (wrapper DialWrapper) Dial(urlString string, header http.Header) (Connectio
 	return websocket.DefaultDialer.Dial(urlString, header)
 }
 
+// RemoteTerminal is an interface for structs that listen for remote commands and take the
+// output to these commands to send back.
+type RemoteTerminal interface {
+	Out() <-chan ShellIO
+	Commands() <-chan Command
+	Errs() <-chan error
+	Listen(url.URL, oauth.AccessToken, <-chan ShellIO, *chan struct{}) <-chan struct{}
+}
+
 // Client is used to connect over the WebSocket protocol and receive as well as send messages.
 type Client struct {
 	dialer   Dialer
@@ -42,26 +51,26 @@ type Client struct {
 }
 
 // Out contains received shell messages.
-func (client *Client) Out() <-chan ShellIO {
+func (client Client) Out() <-chan ShellIO {
 	return client.out
 }
 
 // Commands contains received pre-defined commands.
-func (client *Client) Commands() <-chan Command {
+func (client Client) Commands() <-chan Command {
 	return client.commands
 }
 
 // Errs contains any errors that occur.
-func (client *Client) Errs() <-chan error {
+func (client Client) Errs() <-chan error {
 	return client.errs
 }
 
 // Listen connects to the given endpoint and handles incoming messages. It's interruptable
 // by closing the interrupt channel. Outgoing communication send through `in` are sent to Apollo.
-func (client *Client) Listen(
+func (client Client) Listen(
 	endpointURL url.URL,
 	accessToken oauth.AccessToken,
-	in *chan ShellIO,
+	in <-chan ShellIO,
 	interrupt *chan struct{},
 ) <-chan struct{} {
 	done := make(chan struct{})
@@ -136,14 +145,14 @@ func (client *Client) sendOverChannels(rawMessage []byte) {
 	}
 }
 
-func (client *Client) handleEvents(connection *Connection, in *chan ShellIO,
+func (client *Client) handleEvents(connection *Connection, in <-chan ShellIO,
 	doneListening *chan struct{},
 	interrupt *chan struct{}) error {
 	for {
 		select {
 		case <-*doneListening:
 			return nil
-		case message := <-*in:
+		case message := <-in:
 			conn := *connection
 			jsonMessage, _ := json.Marshal(message)
 			conn.WriteMessage(websocket.TextMessage, jsonMessage)
