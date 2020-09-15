@@ -3,8 +3,10 @@ package websocket_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
+	"runtime"
 	"testing"
 	"time"
 
@@ -129,7 +131,12 @@ func (suite *ClientTestSuite) TestConnectionError() {
 	in := make(chan websocket.ShellIO)
 
 	mockDialer := new(DialerMock)
-	mockDialer.On("Dial", u.String(), http.Header{"Authorization": []string{" "}}).Return(nil, nil, expectedError)
+	mockDialer.On("Dial", u.String(), http.Header{
+		"Authorization": []string{" "},
+		"User-Agent": []string{
+			fmt.Sprintf("Apollo Agent - %s/%s", runtime.GOOS, runtime.GOARCH),
+		},
+	}).Return(nil, nil, expectedError)
 
 	wsClient := websocket.CreateClient(mockDialer)
 	wsClient.Listen(u, oauth.AccessToken{}, in)
@@ -225,7 +232,12 @@ func TestClientSuite(t *testing.T) {
 
 func createWsClient(mockConn *ConnMock) websocket.Client {
 	mockDialer := new(DialerMock)
-	mockDialer.On("Dial", u.String(), http.Header{"Authorization": []string{" "}}).Return(mockConn, nil, nil)
+	mockDialer.On("Dial", u.String(), http.Header{
+		"Authorization": []string{" "},
+		"User-Agent": []string{
+			fmt.Sprintf("Apollo Agent - %s/%s", runtime.GOOS, runtime.GOARCH),
+		},
+	}).Return(mockConn, nil, nil)
 
 	wsClient := websocket.CreateClient(mockDialer)
 	return wsClient

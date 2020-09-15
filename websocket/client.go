@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"runtime"
 
 	"github.com/gorilla/websocket"
 
@@ -116,7 +117,12 @@ func (client *Client) createConnection(endpointURL url.URL, accessToken oauth.Ac
 	urlString := endpointURL.String()
 	log.Printf("Connecting to %s", urlString)
 	authorizationHeader := fmt.Sprintf("%s %s", accessToken.TokenType, accessToken.AccessToken)
-	connection, _, err := client.dialer.Dial(urlString, http.Header{"Authorization": []string{authorizationHeader}})
+	connection, _, err := client.dialer.Dial(urlString, http.Header{
+		"Authorization": []string{authorizationHeader},
+		"User-Agent": []string{
+			fmt.Sprintf("Apollo Agent - %s/%s", runtime.GOOS, runtime.GOARCH),
+		},
+	})
 	return connection, err
 }
 
