@@ -9,6 +9,7 @@ import (
 	"github.com/jessevdk/go-flags"
 
 	"github.com/thecoderstudio/apollo-agent/api"
+	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/net"
 )
 
@@ -29,16 +30,22 @@ func main() {
 
 	host := net.GetHostFromURLString(opts.Host)
 	if host == "" {
-		log.Fatal("No valid host given")
+		logging.Critical("No valid host given")
+		return
 	}
 	middleware, err := api.CreateMiddleware(host, opts.AgentID, opts.Secret, opts.Shell, &interrupt)
 	if err != nil {
-		log.Fatal(err)
+		logging.Critical(err)
+		return
 	}
 
 	reconnectInterval := time.Duration(opts.ReconnectInterval) * time.Second
 
-	middleware.Start(reconnectInterval)
+	err = middleware.Start(reconnectInterval)
+	if err != nil {
+		logging.Critical(err)
+		return
+	}
 }
 
 func parseArguments() {

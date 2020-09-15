@@ -8,6 +8,8 @@ import (
 	"net/url"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/oauth"
 )
 
@@ -87,7 +89,7 @@ func (client Client) Listen(
 	go func() {
 		connection, err := client.createConnection(endpointURL, accessToken)
 		if err != nil {
-			log.Println("Connection error")
+			logging.Critical("Connection error")
 			client.errs <- err
 			close(done)
 			return
@@ -97,10 +99,12 @@ func (client Client) Listen(
 		// to prevent sending messages to closed channels.
 		doneListening := make(chan struct{})
 
+		logging.Success("Connected")
 		go client.awaitMessages(&connection, &done, &doneListening)
 		err = client.handleEvents(&connection, in, &doneListening)
 
 		connection.Close()
+		logging.Critical("Disconnected")
 		close(done)
 		<-doneListening
 	}()
@@ -110,7 +114,7 @@ func (client Client) Listen(
 
 func (client *Client) createConnection(endpointURL url.URL, accessToken oauth.AccessToken) (Connection, error) {
 	urlString := endpointURL.String()
-	log.Printf("connecting to %s", urlString)
+	log.Printf("Connecting to %s", urlString)
 	authorizationHeader := fmt.Sprintf("%s %s", accessToken.TokenType, accessToken.AccessToken)
 	connection, _, err := client.dialer.Dial(urlString, http.Header{"Authorization": []string{authorizationHeader}})
 	return connection, err
@@ -130,7 +134,7 @@ func (client *Client) awaitMessages(connection *Connection, done, doneListening 
 				if client.interrupted {
 					return
 				}
-				log.Println("read error:", err)
+				logging.Critical("Read error", err)
 				client.errs <- err
 				return
 			}
@@ -153,7 +157,7 @@ func (client *Client) sendOverChannels(rawMessage []byte) {
 	case shellIO.Message != "":
 		client.out <- shellIO
 	default:
-		log.Println("Message skipped")
+		logging.Warning("Message skipped")
 	}
 }
 
@@ -162,6 +166,7 @@ func (client *Client) handleEvents(
 	in <-chan ShellIO,
 	doneListening *chan struct{},
 ) error {
+	logging.Info("Listening..")
 	for {
 		select {
 		case <-*doneListening:
@@ -171,6 +176,7 @@ func (client *Client) handleEvents(
 			jsonMessage, _ := json.Marshal(message)
 			conn.WriteMessage(websocket.TextMessage, jsonMessage)
 		case <-client.interrupt:
+			logging.Warning("Interrupted")
 			client.interrupted = true
 			err := client.closeConnection(connection)
 			return err
@@ -179,13 +185,14 @@ func (client *Client) handleEvents(
 }
 
 func (client *Client) closeConnection(connection *Connection) error {
+	logging.Info("Shutting down gracefully")
 	conn := *connection
 	err := conn.WriteMessage(
 		websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
 	)
 	if err != nil {
-		log.Println("Close err:", err)
+		logging.Critical("Close err:", err)
 		return err
 	}
 

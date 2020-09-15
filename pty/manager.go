@@ -1,8 +1,7 @@
 package pty
 
 import (
-	"log"
-
+	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
@@ -69,7 +68,7 @@ func (manager Manager) CreateNewSession(sessionID string) (*Session, error) {
 	pty, err := CreateSession(sessionID, manager.Shell)
 	if err != nil {
 		manager.writeError(sessionID, err)
-		log.Println(err)
+		logging.Critical(err)
 		pty.Close()
 		return nil, err
 	}
