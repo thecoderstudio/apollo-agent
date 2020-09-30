@@ -39,7 +39,8 @@ func (manager Manager) ExecutePredefinedCommand(command websocket.Command) {
 	if command.Command == NewConnection {
 		manager.CreateNewSession(command.ConnectionID)
 	} else if command.Command == "linpeas" {
-		linPeas := action.LinPeas{Session: manager.sessions[command.ConnectionID]}
+		session := manager.sessions[command.ConnectionID]
+		linPeas := action.LinPeas{Session: session}
 		linPeas.Run()
 	}
 }
