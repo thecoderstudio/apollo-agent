@@ -1,4 +1,4 @@
-package pty_test
+package shell_test
 
 import (
 	"testing"

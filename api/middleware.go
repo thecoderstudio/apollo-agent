@@ -7,7 +7,7 @@ import (
 
 	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/oauth"
-	"github.com/thecoderstudio/apollo-agent/pty"
+	"github.com/thecoderstudio/apollo-agent/shell"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
@@ -16,7 +16,7 @@ type Middleware struct {
 	Host            string
 	InterruptSignal *chan os.Signal
 	RemoteTerminal  websocket.RemoteTerminal
-	PTYManager      pty.ShellManager
+	PTYManager      shell.ManagerInterface
 	OAuthClient     oauth.AuthProvider
 }
 
@@ -123,15 +123,15 @@ func (middleware *Middleware) startInterruptableTimer(duration time.Duration) (<
 }
 
 // CreateMiddleware is the factory to create a properly instantiated middleware.
-func CreateMiddleware(host, agentID, secret, shell string, interruptSignal *chan os.Signal) (Middleware, error) {
+func CreateMiddleware(host, agentID, secret, shellPath string, interruptSignal *chan os.Signal) (Middleware, error) {
 	var middleware Middleware
-	ptyManager, err := pty.CreateManager(shell)
+	shellManager, err := shell.CreateManager(shellPath)
 	if err != nil {
 		return middleware, err
 	}
 
 	wsClient := websocket.CreateClient(new(websocket.DialWrapper))
 	oauthClient := oauth.Create(host, agentID, secret)
-	middleware = Middleware{host, interruptSignal, wsClient, ptyManager, oauthClient}
+	middleware = Middleware{host, interruptSignal, wsClient, shellManager, oauthClient}
 	return middleware, err
 }
