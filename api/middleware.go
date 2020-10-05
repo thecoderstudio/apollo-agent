@@ -86,7 +86,7 @@ func (middleware *Middleware) connect(
 func (middleware *Middleware) reconnect(
 	u url.URL,
 	accessToken oauth.AccessToken,
-	in <-chan websocket.ShellIO,
+	in <-chan websocket.Message,
 	reconnectInterval time.Duration,
 ) (<-chan struct{}, bool) {
 	logging.Info("Reconnecting..")

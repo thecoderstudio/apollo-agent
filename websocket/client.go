@@ -42,7 +42,7 @@ type RemoteTerminal interface {
 	Out() <-chan ShellIO
 	Commands() <-chan Command
 	Errs() <-chan error
-	Listen(url.URL, oauth.AccessToken, <-chan ShellIO) <-chan struct{}
+	Listen(url.URL, oauth.AccessToken, <-chan Message) <-chan struct{}
 	Interrupt() chan struct{}
 }
 
@@ -82,7 +82,7 @@ func (client Client) Interrupt() chan struct{} {
 func (client Client) Listen(
 	endpointURL url.URL,
 	accessToken oauth.AccessToken,
-	in <-chan ShellIO,
+	in <-chan Message,
 ) <-chan struct{} {
 	done := make(chan struct{})
 	client.interrupted = false
@@ -169,7 +169,7 @@ func (client *Client) sendOverChannels(rawMessage []byte) {
 
 func (client *Client) handleEvents(
 	connection *Connection,
-	in <-chan ShellIO,
+	in <-chan Message,
 	doneListening *chan struct{},
 ) error {
 	logging.Info("Listening..")

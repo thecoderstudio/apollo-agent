@@ -13,7 +13,7 @@ const NewConnection = "new connection"
 // ManagerInterface is an interface that allows for PTY session
 // management and command execution.
 type ManagerInterface interface {
-	Out() <-chan websocket.ShellIO
+	Out() <-chan websocket.Message
 	ExecutePredefinedCommand(websocket.Command)
 	Execute(websocket.ShellIO) error
 	GetSession(string) *pty.Session
@@ -26,11 +26,11 @@ type ManagerInterface interface {
 type Manager struct {
 	Shell    string
 	sessions map[string]*pty.Session
-	out      chan websocket.ShellIO
+	out      chan websocket.Message
 }
 
 // Out returns all output of the PTY session(s) through a channel.
-func (manager Manager) Out() <-chan websocket.ShellIO {
+func (manager Manager) Out() <-chan websocket.Message {
 	return manager.out
 }
 
@@ -40,8 +40,9 @@ func (manager Manager) ExecutePredefinedCommand(command websocket.Command) {
 		manager.CreateNewSession(command.ConnectionID)
 	} else if command.Command == "linpeas" {
 		session := manager.sessions[command.ConnectionID]
-		linPeas := action.LinPeas{Session: session}
-		linPeas.Run()
+		linPeas := action.LinPeas{Session: session, ConnectionID: command.ConnectionID}
+		serverCommands := linPeas.Run()
+		go manager.writeCommands(serverCommands)
 	}
 }
 
@@ -81,7 +82,7 @@ func (manager Manager) CreateNewSession(sessionID string) (*pty.Session, error) 
 
 	manager.sessions[sessionID] = session
 	out := session.Out()
-	go manager.writeOutput(&out)
+	go manager.writeIO(&out)
 	return session, err
 }
 
@@ -93,10 +94,17 @@ func (manager *Manager) writeError(sessionID string, err error) {
 	manager.out <- errMessage
 }
 
-func (manager *Manager) writeOutput(in *<-chan websocket.ShellIO) {
+func (manager *Manager) writeIO(in *<-chan websocket.ShellIO) {
 	for {
-		message := <-*in
-		manager.out <- message
+		io := <-*in
+		manager.out <- io
+	}
+}
+
+func (manager *Manager) writeCommands(in *chan websocket.Command) {
+	for {
+		command := <-*in
+		manager.out <- command
 	}
 }
 
@@ -116,7 +124,7 @@ func CreateManager(shell string) (Manager, error) {
 		return manager, err
 	}
 
-	out := make(chan websocket.ShellIO)
+	out := make(chan websocket.Message)
 	manager = Manager{
 		Shell:    shell,
 		sessions: map[string]*pty.Session{},
