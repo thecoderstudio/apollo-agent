@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 
+	"github.com/dustin/go-broadcast"
+
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
@@ -14,7 +16,7 @@ type Session struct {
 	SessionID string
 	shell     string
 	session   *os.File
-	out       *chan websocket.ShellIO
+	out       broadcast.Broadcaster
 	done      *chan bool
 	closed    bool
 }
@@ -24,10 +26,10 @@ func (ptySession *Session) Session() *os.File {
 	return ptySession.session
 }
 
-// Out returns a read-only channel used for communicating output to command
+// Out returns a broadcaster used for communicating output to command
 // execution in the PTY.
-func (ptySession *Session) Out() <-chan websocket.ShellIO {
-	return *ptySession.out
+func (ptySession *Session) Out() *broadcast.Broadcaster {
+	return &ptySession.out
 }
 
 // Execute executes toBeExecuted in the pty. Output is written to Session.Out.
@@ -70,7 +72,7 @@ func (ptySession *Session) listen(session *os.File) {
 				ConnectionID: ptySession.SessionID,
 				Message:      string(buf),
 			}
-			*ptySession.out <- outComm
+			ptySession.out.Submit(outComm)
 		}
 	}
 }
@@ -85,17 +87,17 @@ func (ptySession *Session) closeSession() {
 	if ptySession.session != nil {
 		ptySession.session.Close()
 	}
-	close(*ptySession.out)
+	ptySession.out.Close()
 }
 
 // CreateSession creates a new Session injected with the given sessionID, the given shell and defaults.
 func CreateSession(sessionID, shell string) (*Session, error) {
-	out := make(chan websocket.ShellIO)
+	out := broadcast.NewBroadcaster(512)
 	done := make(chan bool)
 	ptySession := Session{
 		SessionID: sessionID,
 		shell:     shell,
-		out:       &out,
+		out:       out,
 		done:      &done,
 		closed:    false,
 	}

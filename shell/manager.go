@@ -1,6 +1,8 @@
 package shell
 
 import (
+	"github.com/dustin/go-broadcast"
+
 	"github.com/thecoderstudio/apollo-agent/action"
 	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/pty"
@@ -82,7 +84,7 @@ func (manager Manager) CreateNewSession(sessionID string) (*pty.Session, error) 
 
 	manager.sessions[sessionID] = session
 	out := session.Out()
-	go manager.writeIO(&out)
+	go manager.writeIO(*out)
 	return session, err
 }
 
@@ -94,10 +96,12 @@ func (manager *Manager) writeError(sessionID string, err error) {
 	manager.out <- errMessage
 }
 
-func (manager *Manager) writeIO(in *<-chan websocket.ShellIO) {
+func (manager *Manager) writeIO(in broadcast.Broadcaster) {
+	genericOut := make(chan interface{})
+	in.Register(genericOut)
 	for {
-		io := <-*in
-		manager.out <- io
+		output := <-genericOut
+		manager.out <- output
 	}
 }
 

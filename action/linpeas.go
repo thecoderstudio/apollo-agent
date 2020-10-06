@@ -26,6 +26,7 @@ type LinPeas struct {
 // Run runs LinPEAS on the machine
 func (linPeas LinPeas) Run() *chan websocket.Command {
 	result := make(chan websocket.Command)
+	go linPeas.waitForCompletion(&result)
 	go linPeas.Session.Execute(
 		fmt.Sprintf(commandFormat, completionIndication),
 	)
@@ -33,28 +34,34 @@ func (linPeas LinPeas) Run() *chan websocket.Command {
 }
 
 func (linPeas LinPeas) waitForCompletion(result *chan websocket.Command) {
-	linPeas.waitForInitialisation()
+	out := make(chan interface{})
+	broadcaster := *linPeas.Session.Out()
+	broadcaster.Register(out)
+
+	linPeas.waitForInitialisation(out)
 	for {
-		if linPeas.outputContains(completionIndication) {
+		if linPeas.outputContains(out, completionIndication) {
 			logging.Critical("DONEE")
 			*result <- websocket.Command{
 				ConnectionID: linPeas.ConnectionID,
 				Command:      "finished",
 			}
+			broadcaster.Unregister(out)
 		}
 	}
 }
 
-func (linPeas LinPeas) waitForInitialisation() {
+func (linPeas LinPeas) waitForInitialisation(out chan interface{}) {
 	for {
-		if linPeas.outputContains(initialisationIndication) {
+		if linPeas.outputContains(out, initialisationIndication) {
 			logging.Critical("init")
 			return
 		}
 	}
 }
 
-func (linPeas LinPeas) outputContains(substring string) bool {
-	output := <-linPeas.Session.Out()
+func (linPeas LinPeas) outputContains(out chan interface{}, substring string) bool {
+	outputGeneric := <-out
+	output := outputGeneric.(websocket.ShellIO)
 	return strings.Contains(output.Message, substring)
 }
