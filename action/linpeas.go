@@ -26,7 +26,6 @@ type LinPeas struct {
 // Run runs LinPEAS on the machine
 func (linPeas LinPeas) Run() *chan websocket.Command {
 	result := make(chan websocket.Command)
-	go linPeas.waitForCompletion(&result)
 	go linPeas.Session.Execute(
 		fmt.Sprintf(commandFormat, completionIndication),
 	)

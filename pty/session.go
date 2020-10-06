@@ -1,6 +1,7 @@
 package pty
 
 import (
+	"bufio"
 	"errors"
 	"os"
 
@@ -55,6 +56,7 @@ func (ptySession *Session) createNewSession() error {
 }
 
 func (ptySession *Session) listen(session *os.File) {
+	reader := bufio.NewReader(session)
 	for {
 		select {
 		case <-*ptySession.done:
@@ -62,7 +64,7 @@ func (ptySession *Session) listen(session *os.File) {
 			return
 		default:
 			buf := make([]byte, 512)
-			session.Read(buf)
+			reader.Read(buf)
 
 			outComm := websocket.ShellIO{
 				ConnectionID: ptySession.SessionID,
