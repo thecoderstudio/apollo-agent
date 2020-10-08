@@ -12,6 +12,9 @@ import (
 // NewConnection command to open a new connection and PTY session
 const NewConnection = "new connection"
 
+// Cancel command to cancel a running PTY session
+const Cancel = "cancel"
+
 // ManagerInterface is an interface that allows for PTY session
 // management and command execution.
 type ManagerInterface interface {
@@ -38,16 +41,22 @@ func (manager Manager) Out() <-chan websocket.Message {
 
 // ExecutePredefinedCommand executes the pre-defined command if it exists.
 func (manager Manager) ExecutePredefinedCommand(command websocket.Command) {
-	if command.Command == NewConnection {
+	switch command.Command {
+	case NewConnection:
 		manager.CreateNewSession(command.ConnectionID)
-	} else if command.Command == "linpeas" {
-		session := manager.sessions[command.ConnectionID]
-		linPeas := action.CreateLinPeas(session)
-		serverCommands := linPeas.Run()
-		go manager.writeCommands(serverCommands)
-	} else if command.Command == "cancel" {
-		session := manager.sessions[command.ConnectionID]
-		session.Close()
+	case Cancel:
+		manager.GetSession(command.ConnectionID).Close()
+	default:
+		out, err := action.Execute(
+			manager.GetSession(command.ConnectionID),
+			command,
+		)
+		if err != nil {
+			logging.Critical(err)
+			return
+		}
+
+		go manager.writeCommands(out)
 	}
 }
 

