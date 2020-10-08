@@ -2,7 +2,6 @@ package action
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/thecoderstudio/apollo-agent/pty"
 	"github.com/thecoderstudio/apollo-agent/websocket"
@@ -18,47 +17,27 @@ const commandFormat = "curl https://raw.githubusercontent.com/carlospolop/" +
 // to search for possible local privilege escalation paths
 // https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite
 type LinPeas struct {
-	ConnectionID string
-	Session      *pty.Session
+	Session         *pty.Session
+	commandObserver CommandObserver
 }
 
 // Run runs LinPEAS on the machine
 func (linPeas LinPeas) Run() *chan websocket.Command {
-	result := make(chan websocket.Command)
-	go linPeas.waitForCompletion(&result)
-	go linPeas.Session.Execute(
+	go linPeas.commandObserver.WaitForCompletion(linPeas.Session)
+	go linPeas.execute()
+	return linPeas.commandObserver.CommandOutput()
+}
+
+func (linPeas LinPeas) execute() {
+	linPeas.Session.Execute(
 		fmt.Sprintf(commandFormat, completionIndication),
 	)
-	return &result
 }
 
-func (linPeas LinPeas) waitForCompletion(result *chan websocket.Command) {
-	out := make(chan interface{})
-	broadcaster := *linPeas.Session.Out()
-	broadcaster.Register(out)
-
-	linPeas.waitForInitialisation(out)
-	for {
-		if linPeas.outputContains(out, completionIndication) {
-			*result <- websocket.Command{
-				ConnectionID: linPeas.ConnectionID,
-				Command:      "finished",
-			}
-			broadcaster.Unregister(out)
-		}
+// CreateLinPeas create and returns a fully initialised LinPeas action.
+func CreateLinPeas(session *pty.Session) LinPeas {
+	return LinPeas{
+		Session:         session,
+		commandObserver: CreateCommandObserver(initialisationIndication, completionIndication),
 	}
-}
-
-func (linPeas LinPeas) waitForInitialisation(out chan interface{}) {
-	for {
-		if linPeas.outputContains(out, initialisationIndication) {
-			return
-		}
-	}
-}
-
-func (linPeas LinPeas) outputContains(out chan interface{}, substring string) bool {
-	outputGeneric := <-out
-	output := outputGeneric.(websocket.ShellIO)
-	return strings.Contains(output.Message, substring)
 }
