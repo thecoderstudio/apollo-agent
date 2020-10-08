@@ -45,6 +45,9 @@ func (manager Manager) ExecutePredefinedCommand(command websocket.Command) {
 		linPeas := action.LinPeas{Session: session, ConnectionID: command.ConnectionID}
 		serverCommands := linPeas.Run()
 		go manager.writeCommands(serverCommands)
+	} else if command.Command == "cancel" {
+		session := manager.sessions[command.ConnectionID]
+		session.Close()
 	}
 }
 

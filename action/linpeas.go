@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/pty"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
@@ -41,7 +40,6 @@ func (linPeas LinPeas) waitForCompletion(result *chan websocket.Command) {
 	linPeas.waitForInitialisation(out)
 	for {
 		if linPeas.outputContains(out, completionIndication) {
-			logging.Critical("DONEE")
 			*result <- websocket.Command{
 				ConnectionID: linPeas.ConnectionID,
 				Command:      "finished",
@@ -54,7 +52,6 @@ func (linPeas LinPeas) waitForCompletion(result *chan websocket.Command) {
 func (linPeas LinPeas) waitForInitialisation(out chan interface{}) {
 	for {
 		if linPeas.outputContains(out, initialisationIndication) {
-			logging.Critical("init")
 			return
 		}
 	}

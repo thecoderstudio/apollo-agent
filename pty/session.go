@@ -68,6 +68,10 @@ func (ptySession *Session) listen(session *os.File) {
 			buf := make([]byte, 512)
 			reader.Read(buf)
 
+			if ptySession.closed {
+				return
+			}
+
 			outComm := websocket.ShellIO{
 				ConnectionID: ptySession.SessionID,
 				Message:      string(buf),
@@ -80,6 +84,7 @@ func (ptySession *Session) listen(session *os.File) {
 // Close schedules the session for closure
 func (ptySession *Session) Close() {
 	ptySession.closed = true
+	ptySession.session.Close()
 	close(*ptySession.done)
 }
 
