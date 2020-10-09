@@ -27,11 +27,15 @@ func TestCreateSessionInvalidShell(t *testing.T) {
 }
 
 func TestExecuteEmptyCommand(t *testing.T) {
+	outChan := make(chan interface{})
 	pty, _ := pty.CreateSession("test", "/bin/bash")
+	broadcaster := *pty.Out()
+	broadcaster.Register(outChan)
+	defer close(outChan)
 	defer pty.Close()
 
 	pty.Execute("")
-	assert.Empty(t, pty.Out())
+	assert.Empty(t, outChan)
 }
 
 func TestExecute(t *testing.T) {

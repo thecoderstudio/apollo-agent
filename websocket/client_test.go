@@ -86,8 +86,7 @@ func TestDialWrapperDialError(t *testing.T) {
 }
 
 func (suite *ClientTestSuite) TestListenForShellIOSuccess() {
-	in := make(chan websocket.ShellIO)
-	defer close(in)
+	in := make(<-chan websocket.Message)
 
 	mockConn := new(ConnMock)
 	mockConn.MockClosed(nil)
@@ -110,8 +109,7 @@ func (suite *ClientTestSuite) TestListenForShellIOSuccess() {
 
 func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 	expectedError := errors.New("test")
-	in := make(chan websocket.ShellIO)
-	defer close(in)
+	in := make(<-chan websocket.Message)
 
 	mockConn := new(ConnMock)
 	mockConn.MockClosed(expectedError)
@@ -128,7 +126,7 @@ func (suite *ClientTestSuite) TestCloseConnectionWriteError() {
 
 func (suite *ClientTestSuite) TestConnectionError() {
 	expectedError := errors.New("connection error")
-	in := make(chan websocket.ShellIO)
+	in := make(<-chan websocket.Message)
 
 	mockDialer := new(DialerMock)
 	mockDialer.On("Dial", u.String(), http.Header{
@@ -146,12 +144,11 @@ func (suite *ClientTestSuite) TestConnectionError() {
 	assert.EqualError(suite.T(), err, "connection error")
 
 	close(wsClient.Interrupt())
-	close(in)
 }
 
 func (suite *ClientTestSuite) TestReadMessageError() {
 	expectedError := errors.New("read error")
-	in := make(chan websocket.ShellIO)
+	in := make(<-chan websocket.Message)
 
 	mockConn := new(ConnMock)
 	mockConn.On("Close").Return(nil)
@@ -166,12 +163,10 @@ func (suite *ClientTestSuite) TestReadMessageError() {
 	assert.EqualError(suite.T(), err, "read error")
 
 	close(wsClient.Interrupt())
-	close(in)
 }
 
 func (suite *ClientTestSuite) TestWriteMessage() {
-	in := make(chan websocket.ShellIO)
-	defer close(in)
+	in := make(chan websocket.Message)
 
 	testShellIO := websocket.ShellIO{
 		ConnectionID: "test",
@@ -200,9 +195,8 @@ func (suite *ClientTestSuite) TestWriteMessage() {
 }
 
 func (suite *ClientTestSuite) TestInterrupt() {
-	in := make(chan websocket.ShellIO)
+	in := make(<-chan websocket.Message)
 	errSent := make(chan time.Time)
-	defer close(in)
 
 	mockConn := new(ConnMock)
 	wsClient := createWsClient(mockConn)
