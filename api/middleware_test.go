@@ -13,7 +13,7 @@ import (
 	"github.com/thecoderstudio/apollo-agent/api"
 	"github.com/thecoderstudio/apollo-agent/mocks"
 	"github.com/thecoderstudio/apollo-agent/oauth"
-	"github.com/thecoderstudio/apollo-agent/pty"
+	"github.com/thecoderstudio/apollo-agent/shell"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
@@ -222,7 +222,7 @@ func createRemoteTerminalMock(
 func startMiddleware(
 	interruptSignal *chan os.Signal,
 	remoteTerminal websocket.RemoteTerminal,
-	ptyManager pty.ShellManager,
+	ptyManager shell.Manager,
 	oauthClient oauth.AuthProvider,
 ) chan struct{} {
 	middleware := api.Middleware{
