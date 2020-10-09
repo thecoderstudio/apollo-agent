@@ -45,7 +45,7 @@ func (manager Manager) ExecutePredefinedCommand(command websocket.Command) {
 	case NewConnection:
 		manager.CreateNewSession(command.ConnectionID)
 	case Cancel:
-		manager.GetSession(command.ConnectionID).Close()
+		manager.removeSession(command.ConnectionID)
 	default:
 		out, err := action.Execute(
 			manager.GetSession(command.ConnectionID),
@@ -81,6 +81,11 @@ func (manager Manager) Execute(shellIO websocket.ShellIO) error {
 // session exists.
 func (manager Manager) GetSession(sessionID string) *pty.Session {
 	return manager.sessions[sessionID]
+}
+
+func (manager Manager) removeSession(sessionID string) {
+	manager.GetSession(sessionID).Close()
+	delete(manager.sessions, sessionID)
 }
 
 // CreateNewSession creates a new PTY session for the given ID,
