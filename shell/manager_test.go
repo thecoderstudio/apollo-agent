@@ -123,3 +123,20 @@ func TestManagerExecuteInvalidShell(t *testing.T) {
 		Message:      expectedErrMessage,
 	})
 }
+
+func TestManagerCancelSession(t *testing.T) {
+	manager, _ := shell.CreateManager("/bin/bash")
+
+	manager.ExecutePredefinedCommand(websocket.Command{
+		ConnectionID: "test",
+		Command:      shell.NewConnection,
+	})
+
+	manager.ExecutePredefinedCommand(websocket.Command{
+		ConnectionID: "test",
+		Command:      shell.Cancel,
+	})
+
+	session := manager.GetSession("test")
+	assert.Nil(t, session)
+}
