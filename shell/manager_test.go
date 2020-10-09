@@ -118,10 +118,8 @@ func TestManagerExecuteInvalidShell(t *testing.T) {
 	}()
 	writtenErr := <-manager.Out()
 
-	assert.Equal(t, writtenErr, websocket.ShellIO{
+	assert.Equal(t, writtenErr.(websocket.ShellIO), websocket.ShellIO{
 		ConnectionID: "test",
 		Message:      expectedErrMessage,
 	})
-
-	manager.Close()
 }
