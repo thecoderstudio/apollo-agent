@@ -65,11 +65,11 @@ func (_m *RemoteTerminal) Interrupt() chan struct{} {
 }
 
 // Listen provides a mock function with given fields: _a0, _a1, _a2
-func (_m *RemoteTerminal) Listen(_a0 url.URL, _a1 oauth.AccessToken, _a2 <-chan websocket.ShellIO) <-chan struct{} {
+func (_m *RemoteTerminal) Listen(_a0 url.URL, _a1 oauth.AccessToken, _a2 <-chan websocket.Message) <-chan struct{} {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 <-chan struct{}
-	if rf, ok := ret.Get(0).(func(url.URL, oauth.AccessToken, <-chan websocket.ShellIO) <-chan struct{}); ok {
+	if rf, ok := ret.Get(0).(func(url.URL, oauth.AccessToken, <-chan websocket.Message) <-chan struct{}); ok {
 		r0 = rf(_a0, _a1, _a2)
 	} else {
 		if ret.Get(0) != nil {
