@@ -137,6 +137,7 @@ func TestManagerCancelSession(t *testing.T) {
 		Command:      shell.Cancel,
 	})
 
+	// TODO assert closure
 	session := manager.GetSession("test")
 	assert.Nil(t, session)
 }

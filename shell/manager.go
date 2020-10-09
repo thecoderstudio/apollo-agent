@@ -29,9 +29,10 @@ type ManagerInterface interface {
 // Manager helps managing multiple PTY sessions by finding or creating the
 // correct session based on ShellIO.ConnectionID and handling execution.
 type Manager struct {
-	Shell    string
-	sessions map[string]*pty.Session
-	out      chan websocket.Message
+	Shell          string
+	sessions       map[string]*pty.Session
+	out            chan websocket.Message
+	actionExecutor func(*pty.Session, websocket.Command) (*chan websocket.Command, error)
 }
 
 // Out returns all output of the PTY session(s) through a channel.
@@ -147,9 +148,10 @@ func CreateManager(shell string) (Manager, error) {
 
 	out := make(chan websocket.Message)
 	manager = Manager{
-		Shell:    shell,
-		sessions: map[string]*pty.Session{},
-		out:      out,
+		Shell:          shell,
+		sessions:       map[string]*pty.Session{},
+		out:            out,
+		actionExecutor: action.Execute,
 	}
 
 	return manager, err
