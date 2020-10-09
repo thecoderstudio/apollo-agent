@@ -16,7 +16,7 @@ type Action interface {
 
 // Execute executes the action for the given command and returns its output. If no action is found Execute will
 // return an error.
-func Execute(session *pty.Session, command websocket.Command) (*chan websocket.Command, error) {
+func Execute(session pty.BaseSession, command websocket.Command) (*chan websocket.Command, error) {
 	var action Action
 	var err error
 

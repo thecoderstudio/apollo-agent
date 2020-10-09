@@ -157,7 +157,7 @@ func TestManagerExecuteAction(t *testing.T) {
 		Command:      "success",
 	}
 
-	mockExecute := func(session *pty.Session, command websocket.Command) (*chan websocket.Command, error) {
+	mockExecute := func(session pty.BaseSession, command websocket.Command) (*chan websocket.Command, error) {
 		out := make(chan websocket.Command)
 		if command.Command == "fake" {
 			go func() {

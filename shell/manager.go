@@ -31,7 +31,7 @@ type Manager struct {
 	Shell          string
 	sessions       map[string]*pty.Session
 	out            chan websocket.Message
-	actionExecutor func(*pty.Session, websocket.Command) (*chan websocket.Command, error)
+	actionExecutor func(pty.BaseSession, websocket.Command) (*chan websocket.Command, error)
 }
 
 // Out returns all output of the PTY session(s) through a channel.
@@ -159,7 +159,7 @@ func (manager Manager) Close() {
 // with the given shell.
 func CreateManager(
 	shell string,
-	actionExecutor func(*pty.Session, websocket.Command) (*chan websocket.Command, error),
+	actionExecutor func(pty.BaseSession, websocket.Command) (*chan websocket.Command, error),
 
 ) (Manager, error) {
 	err := pty.Verify(shell)

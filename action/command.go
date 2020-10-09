@@ -20,7 +20,7 @@ func (commandObserver CommandObserver) CommandOutput() *chan websocket.Command {
 }
 
 // WaitForCompletion observes the given PTY session and sends a finished command on completion.
-func (commandObserver CommandObserver) WaitForCompletion(session *pty.Session) {
+func (commandObserver CommandObserver) WaitForCompletion(session pty.BaseSession) {
 	out := make(chan interface{})
 	broadcaster := *session.Out()
 	broadcaster.Register(out)
@@ -29,7 +29,7 @@ func (commandObserver CommandObserver) WaitForCompletion(session *pty.Session) {
 	for {
 		if commandObserver.outputContains(out, commandObserver.CompletionIndication) {
 			commandObserver.commandOutput <- websocket.Command{
-				ConnectionID: session.SessionID,
+				ConnectionID: session.SessionID(),
 				Command:      "finished",
 			}
 			broadcaster.Unregister(out)

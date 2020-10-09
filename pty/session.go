@@ -10,15 +10,29 @@ import (
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
+// BaseSession allows communcation with a PTY session.
+type BaseSession interface {
+	SessionID() string
+	Session() *os.File
+	Out() *broadcast.Broadcaster
+	Execute(string) error
+	Close()
+}
+
 // Session is a PTY that allows command execution through Session.Execute while sending output
 // through the Session.Out channel.
 type Session struct {
-	SessionID string
+	sessionID string
 	shell     string
 	session   *os.File
 	out       broadcast.Broadcaster
 	done      *chan bool
 	closed    bool
+}
+
+// SessionID returns the sessionID
+func (ptySession *Session) SessionID() string {
+	return ptySession.sessionID
 }
 
 // Session returns the inner pty.
@@ -69,7 +83,7 @@ func (ptySession *Session) listen(session *os.File) {
 			reader.Read(buf)
 
 			outComm := websocket.ShellIO{
-				ConnectionID: ptySession.SessionID,
+				ConnectionID: ptySession.SessionID(),
 				Message:      string(buf),
 			}
 			ptySession.out.Submit(outComm)
@@ -94,7 +108,7 @@ func CreateSession(sessionID, shell string) (*Session, error) {
 	out := broadcast.NewBroadcaster(512)
 	done := make(chan bool)
 	ptySession := Session{
-		SessionID: sessionID,
+		sessionID: sessionID,
 		shell:     shell,
 		out:       out,
 		done:      &done,

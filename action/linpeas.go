@@ -21,7 +21,7 @@ const LinPeasCommand = "linpeas"
 // to search for possible local privilege escalation paths
 // https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite
 type LinPeas struct {
-	Session         *pty.Session
+	Session         pty.BaseSession
 	commandObserver CommandObserver
 }
 
@@ -39,7 +39,7 @@ func (linPeas LinPeas) execute() {
 }
 
 // CreateLinPeas create and returns a fully initialised LinPeas action.
-func CreateLinPeas(session *pty.Session) LinPeas {
+func CreateLinPeas(session pty.BaseSession) LinPeas {
 	return LinPeas{
 		Session:         session,
 		commandObserver: CreateCommandObserver(initialisationIndication, completionIndication),

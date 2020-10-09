@@ -14,7 +14,7 @@ func TestCreateSession(t *testing.T) {
 	defer pty.Close()
 
 	assert.NoError(t, err)
-	assert.Equal(t, pty.SessionID, "test")
+	assert.Equal(t, pty.SessionID(), "test")
 	assert.NotNil(t, pty.Session())
 	assert.NotNil(t, pty.Out())
 }
