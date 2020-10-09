@@ -3,7 +3,6 @@ package shell
 import (
 	"github.com/dustin/go-broadcast"
 
-	"github.com/thecoderstudio/apollo-agent/action"
 	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/pty"
 	"github.com/thecoderstudio/apollo-agent/websocket"
@@ -48,17 +47,32 @@ func (manager Manager) ExecutePredefinedCommand(command websocket.Command) {
 	case Cancel:
 		manager.removeSession(command.ConnectionID)
 	default:
-		out, err := action.Execute(
-			manager.GetSession(command.ConnectionID),
-			command,
-		)
-		if err != nil {
-			logging.Critical(err)
-			return
+		manager.executeAction(command)
+	}
+}
+
+func (manager Manager) executeAction(command websocket.Command) {
+	session := manager.GetSession(command.ConnectionID)
+	if session == nil {
+		manager.out <- websocket.ShellIO{
+			ConnectionID: command.ConnectionID,
+			Message:      "PTYSession not found",
 		}
 
-		go manager.writeCommands(out)
 	}
+
+	out, err := manager.actionExecutor(session, command)
+	if err != nil {
+		logging.Critical(err)
+		logging.Critical(err.Error())
+		manager.out <- websocket.ShellIO{
+			ConnectionID: command.ConnectionID,
+			Message:      err.Error(),
+		}
+		return
+	}
+
+	go manager.writeCommands(out)
 }
 
 // Execute send the given input to the PTY session, reusing a session if
@@ -85,7 +99,11 @@ func (manager Manager) GetSession(sessionID string) *pty.Session {
 }
 
 func (manager Manager) removeSession(sessionID string) {
-	manager.GetSession(sessionID).Close()
+	session := manager.GetSession(sessionID)
+	if session == nil {
+		return
+	}
+	session.Close()
 	delete(manager.sessions, sessionID)
 }
 
@@ -139,7 +157,11 @@ func (manager Manager) Close() {
 
 // CreateManager creates a Manager with the required out channel. All sessions will get created
 // with the given shell.
-func CreateManager(shell string) (Manager, error) {
+func CreateManager(
+	shell string,
+	actionExecutor func(*pty.Session, websocket.Command) (*chan websocket.Command, error),
+
+) (Manager, error) {
 	err := pty.Verify(shell)
 	var manager Manager
 	if err != nil {
@@ -151,7 +173,7 @@ func CreateManager(shell string) (Manager, error) {
 		Shell:          shell,
 		sessions:       map[string]*pty.Session{},
 		out:            out,
-		actionExecutor: action.Execute,
+		actionExecutor: actionExecutor,
 	}
 
 	return manager, err

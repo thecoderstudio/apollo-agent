@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/thecoderstudio/apollo-agent/action"
 	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/oauth"
 	"github.com/thecoderstudio/apollo-agent/shell"
@@ -125,7 +126,7 @@ func (middleware *Middleware) startInterruptableTimer(duration time.Duration) (<
 // CreateMiddleware is the factory to create a properly instantiated middleware.
 func CreateMiddleware(host, agentID, secret, shellPath string, interruptSignal *chan os.Signal) (Middleware, error) {
 	var middleware Middleware
-	shellManager, err := shell.CreateManager(shellPath)
+	shellManager, err := shell.CreateManager(shellPath, action.Execute)
 	if err != nil {
 		return middleware, err
 	}
