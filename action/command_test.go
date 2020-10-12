@@ -35,7 +35,7 @@ func TestWaitForCompletion(t *testing.T) {
 	out := *commandObserver.CommandOutput()
 	go commandObserver.WaitForCompletion(sessionMock)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(time.Second)
 	broadcaster.Submit(websocket.ShellIO{
 		ConnectionID: fakeConnectionID,
 		Message:      initIndication,

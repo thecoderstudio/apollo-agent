@@ -35,7 +35,7 @@ func TestRun(t *testing.T) {
 	linPeas := action.CreateLinPeas(sessionMock)
 	out := *linPeas.Run()
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(time.Second)
 	broadcaster.Submit(websocket.ShellIO{
 		ConnectionID: linPeasConnectionID,
 		Message:      linPeasInitIndication,

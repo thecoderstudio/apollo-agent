@@ -33,7 +33,7 @@ func TestExecuteLinPeas(t *testing.T) {
 		},
 	)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(time.Second)
 	broadcaster.Submit(websocket.ShellIO{
 		ConnectionID: linPeasConnectionID,
 		Message:      linPeasInitIndication,
