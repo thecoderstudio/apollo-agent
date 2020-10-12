@@ -31,7 +31,7 @@ func TestMiddleware(t *testing.T) {
 	commands, readOnlyCommands := createCommandChannels()
 	_, readOnlyConnErrs := createErrChannels()
 
-	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock, interrupt := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
 	remoteTerminalMock.On("Listen", mock.Anything, mock.Anything, mock.Anything).Return(readOnlyDone)
 
 	shellIO := websocket.ShellIO{ConnectionID: "1", Message: "echo 'test'"}
@@ -41,8 +41,11 @@ func TestMiddleware(t *testing.T) {
 	shellManagerMock.On("Out").Return(make(<-chan websocket.Message))
 	shellManagerMock.On("ExecutePredefinedCommand", command)
 	shellManagerMock.On("Execute", shellIO).Return(nil).Run(func(arguments mock.Arguments) {
-		interruptSignal <- syscall.SIGINT
-		close(done)
+		go func() {
+			interruptSignal <- syscall.SIGINT
+			<-interrupt
+			close(done)
+		}()
 	})
 
 	stopped := startMiddleware(&interruptSignal, remoteTerminalMock, shellManagerMock, authProviderMock)
@@ -74,7 +77,7 @@ func TestReAuthentication(t *testing.T) {
 	_, readOnlyCommands := createCommandChannels()
 	_, readOnlyConnErrs := createErrChannels()
 
-	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock, _ := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
 	remoteTerminalMock.On("Listen", mock.Anything, initialAccessToken, mock.Anything).Return(readOnlyDone).Once()
 	remoteTerminalMock.On("Listen", mock.Anything, secondAccessToken, mock.Anything).Return(readOnlyDone).Run(func(args mock.Arguments) {
 		close(done)
@@ -110,7 +113,7 @@ func TestAuthenticationFailure(t *testing.T) {
 	_, readOnlyCommands := createCommandChannels()
 	_, readOnlyConnErrs := createErrChannels()
 
-	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock, _ := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
 
 	shellManagerMock := new(mocks.ManagerInterface)
 
@@ -133,7 +136,7 @@ func TestReconnect(t *testing.T) {
 	_, readOnlyCommands := createCommandChannels()
 	connErrs, readOnlyConnErrs := createErrChannels()
 
-	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock, _ := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
 	remoteTerminalMock.On("Listen", mock.Anything, accessToken, mock.Anything).Return(readOnlyDone).Once()
 	remoteTerminalMock.On("Listen", mock.Anything, accessToken, mock.Anything).Return(readOnlyDone).Once().Run(
 		func(args mock.Arguments) {
@@ -167,7 +170,7 @@ func TestReconnectInterrupt(t *testing.T) {
 	_, readOnlyCommands := createCommandChannels()
 	connErrs, readOnlyConnErrs := createErrChannels()
 
-	remoteTerminalMock := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
+	remoteTerminalMock, _ := createRemoteTerminalMock(readOnlyDone, readOnlyOut, readOnlyCommands, readOnlyConnErrs)
 	remoteTerminalMock.On("Listen", mock.Anything, accessToken, mock.Anything).Return(readOnlyDone).Once()
 
 	shellManagerMock := new(mocks.ManagerInterface)
@@ -209,14 +212,14 @@ func createRemoteTerminalMock(
 	out <-chan websocket.ShellIO,
 	commands <-chan websocket.Command,
 	errs <-chan error,
-) *mocks.RemoteTerminal {
+) (*mocks.RemoteTerminal, chan struct{}) {
 	interrupt := make(chan struct{})
 	remoteTerminalMock := new(mocks.RemoteTerminal)
 	remoteTerminalMock.On("Out").Return(out)
 	remoteTerminalMock.On("Commands").Return(commands)
 	remoteTerminalMock.On("Errs").Return(errs)
 	remoteTerminalMock.On("Interrupt").Maybe().Return(interrupt)
-	return remoteTerminalMock
+	return remoteTerminalMock, interrupt
 }
 
 func startMiddleware(
