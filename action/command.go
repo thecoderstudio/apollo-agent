@@ -3,6 +3,7 @@ package action
 import (
 	"strings"
 
+	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/pty"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
@@ -38,6 +39,7 @@ func (commandObserver CommandObserver) WaitForCompletion(session pty.BaseSession
 }
 
 func (commandObserver CommandObserver) waitForInitialisation(out chan interface{}) {
+	logging.Critical("waiting")
 	for {
 		if commandObserver.outputContains(out, commandObserver.InitialisationIndication) {
 			return
@@ -48,6 +50,7 @@ func (commandObserver CommandObserver) waitForInitialisation(out chan interface{
 func (commandObserver CommandObserver) outputContains(out chan interface{}, substring string) bool {
 	outputGeneric := <-out
 	output := outputGeneric.(websocket.ShellIO)
+	logging.Critical(output.Message)
 	return strings.Contains(output.Message, substring)
 }
 
