@@ -25,7 +25,7 @@ func TestExecuteLinPeas(t *testing.T) {
 	sessionMock.On("Execute", command).Return(nil)
 	sessionMock.On("Out").Return(&broadcaster)
 
-	out, err := action.Execute(
+	out, err := action.Executor{}.Execute(
 		sessionMock,
 		websocket.Command{
 			ConnectionID: linPeasConnectionID,
@@ -55,7 +55,7 @@ func TestExecuteLinPeas(t *testing.T) {
 
 func TestExecuteActionNotFound(t *testing.T) {
 	sessionMock := new(mocks.BaseSession)
-	out, err := action.Execute(
+	out, err := action.Executor{}.Execute(
 		sessionMock,
 		websocket.Command{
 			ConnectionID: linPeasConnectionID,

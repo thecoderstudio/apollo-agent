@@ -14,9 +14,18 @@ type Action interface {
 	execute()
 }
 
+// CommandExecutor is an interface for strucs that match commands with their respective actions and execute them.
+type CommandExecutor interface {
+	Execute(session pty.BaseSession, command websocket.Command) (*chan websocket.Command, error)
+}
+
+// Executor matches commands with their respective actions and executes them.
+type Executor struct {
+}
+
 // Execute executes the action for the given command and returns its output. If no action is found Execute will
 // return an error.
-func Execute(session pty.BaseSession, command websocket.Command) (*chan websocket.Command, error) {
+func (executor Executor) Execute(session pty.BaseSession, command websocket.Command) (*chan websocket.Command, error) {
 	var action Action
 	var err error
 

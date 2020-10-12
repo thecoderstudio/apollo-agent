@@ -3,6 +3,7 @@ package shell
 import (
 	"github.com/dustin/go-broadcast"
 
+	"github.com/thecoderstudio/apollo-agent/action"
 	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/pty"
 	"github.com/thecoderstudio/apollo-agent/websocket"
@@ -31,7 +32,7 @@ type Manager struct {
 	Shell          string
 	sessions       map[string]*pty.Session
 	out            chan websocket.Message
-	actionExecutor func(pty.BaseSession, websocket.Command) (*chan websocket.Command, error)
+	actionExecutor action.CommandExecutor
 }
 
 // Out returns all output of the PTY session(s) through a channel.
@@ -61,7 +62,7 @@ func (manager Manager) executeAction(command websocket.Command) {
 
 	}
 
-	out, err := manager.actionExecutor(session, command)
+	out, err := manager.actionExecutor.Execute(session, command)
 	if err != nil {
 		logging.Critical(err)
 		logging.Critical(err.Error())
@@ -157,11 +158,7 @@ func (manager Manager) Close() {
 
 // CreateManager creates a Manager with the required out channel. All sessions will get created
 // with the given shell.
-func CreateManager(
-	shell string,
-	actionExecutor func(pty.BaseSession, websocket.Command) (*chan websocket.Command, error),
-
-) (Manager, error) {
+func CreateManager(shell string, actionExecutor action.CommandExecutor) (Manager, error) {
 	err := pty.Verify(shell)
 	var manager Manager
 	if err != nil {

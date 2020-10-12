@@ -4,15 +4,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/thecoderstudio/apollo-agent/action"
-	"github.com/thecoderstudio/apollo-agent/pty"
+	"github.com/thecoderstudio/apollo-agent/mocks"
 	"github.com/thecoderstudio/apollo-agent/shell"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
 func TestCreateManager(t *testing.T) {
-	manager, err := shell.CreateManager("/bin/bash", action.Execute)
+	manager, err := shell.CreateManager("/bin/bash", action.Executor{})
 
 	assert.NotNil(t, manager)
 	assert.NoError(t, err)
@@ -21,13 +22,13 @@ func TestCreateManager(t *testing.T) {
 }
 
 func TestCreateManagerInvalidShell(t *testing.T) {
-	_, err := shell.CreateManager("/bin/fake", action.Execute)
+	_, err := shell.CreateManager("/bin/fake", action.Executor{})
 
 	assert.EqualError(t, err, "fork/exec /bin/fake: no such file or directory")
 }
 
 func TestNewConnectionCommand(t *testing.T) {
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 
 	manager.ExecutePredefinedCommand(websocket.Command{
 		ConnectionID: "test",
@@ -40,7 +41,7 @@ func TestNewConnectionCommand(t *testing.T) {
 }
 
 func TestGetSession(t *testing.T) {
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 
 	session, _ := manager.CreateNewSession("test")
 
@@ -50,13 +51,13 @@ func TestGetSession(t *testing.T) {
 }
 
 func TestGetSessionNotFound(t *testing.T) {
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 
 	assert.Nil(t, manager.GetSession("test"))
 }
 
 func TestCreateNewSession(t *testing.T) {
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 	session, err := manager.CreateNewSession("test")
 
 	assert.NotNil(t, session)
@@ -67,7 +68,7 @@ func TestCreateNewSession(t *testing.T) {
 
 func TestCreateNewSessionInvalidShell(t *testing.T) {
 	expectedErrMessage := "fork/exec /bin/fake: no such file or directory"
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 	manager.Shell = "/bin/fake"
 
 	go func() {
@@ -86,7 +87,7 @@ func TestCreateNewSessionInvalidShell(t *testing.T) {
 }
 
 func TestManagerExecute(t *testing.T) {
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 
 	manager.Execute(websocket.ShellIO{
 		ConnectionID: "test",
@@ -108,7 +109,7 @@ func TestManagerExecute(t *testing.T) {
 
 func TestManagerExecuteInvalidShell(t *testing.T) {
 	expectedErrMessage := "fork/exec /bin/fake: no such file or directory"
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 	manager.Shell = "/bin/fake"
 
 	go func() {
@@ -127,7 +128,7 @@ func TestManagerExecuteInvalidShell(t *testing.T) {
 }
 
 func TestManagerCancelSession(t *testing.T) {
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 	manager.ExecutePredefinedCommand(websocket.Command{
 		ConnectionID: "test",
 		Command:      shell.NewConnection,
@@ -144,7 +145,7 @@ func TestManagerCancelSession(t *testing.T) {
 }
 
 func TestManagerCancelFakeSession(t *testing.T) {
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 	manager.ExecutePredefinedCommand(websocket.Command{
 		ConnectionID: "test",
 		Command:      shell.Cancel,
@@ -156,18 +157,19 @@ func TestManagerExecuteAction(t *testing.T) {
 		ConnectionID: "test",
 		Command:      "success",
 	}
+	out := make(chan websocket.Command)
+	mockExecutor := new(mocks.CommandExecutor)
+	mockExecutor.On(
+		"Execute",
+		mock.Anything,
+		mock.MatchedBy(func(command websocket.Command) bool { return command.Command == "fake" }),
+	).Return(&out, nil).Run(func(args mock.Arguments) {
+		go func() {
+			out <- successCommand
+		}()
+	})
 
-	mockExecute := func(session pty.BaseSession, command websocket.Command) (*chan websocket.Command, error) {
-		out := make(chan websocket.Command)
-		if command.Command == "fake" {
-			go func() {
-				out <- successCommand
-			}()
-		}
-		return &out, nil
-	}
-
-	manager, _ := shell.CreateManager("/bin/bash", mockExecute)
+	manager, _ := shell.CreateManager("/bin/bash", mockExecutor)
 	manager.ExecutePredefinedCommand(websocket.Command{
 		ConnectionID: "test",
 		Command:      shell.NewConnection,
@@ -192,7 +194,7 @@ func TestManagerExecuteUnknownAction(t *testing.T) {
 		Message:      "action not found for given command: fake",
 	}
 
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 	manager.ExecutePredefinedCommand(websocket.Command{
 		ConnectionID: "test",
 		Command:      shell.NewConnection,
@@ -219,7 +221,7 @@ func TestManagerExecuteOnFakeSession(t *testing.T) {
 		Message:      "PTYSession not found",
 	}
 
-	manager, _ := shell.CreateManager("/bin/bash", action.Execute)
+	manager, _ := shell.CreateManager("/bin/bash", action.Executor{})
 	go func() {
 		manager.ExecutePredefinedCommand(websocket.Command{
 			ConnectionID: "test",

@@ -126,7 +126,7 @@ func (middleware *Middleware) startInterruptableTimer(duration time.Duration) (<
 // CreateMiddleware is the factory to create a properly instantiated middleware.
 func CreateMiddleware(host, agentID, secret, shellPath string, interruptSignal *chan os.Signal) (Middleware, error) {
 	var middleware Middleware
-	shellManager, err := shell.CreateManager(shellPath, action.Execute)
+	shellManager, err := shell.CreateManager(shellPath, action.Executor{})
 	if err != nil {
 		return middleware, err
 	}
