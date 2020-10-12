@@ -52,3 +52,9 @@ func TestRun(t *testing.T) {
 	finishedCommand := <-out
 	assert.Equal(t, finishedCommand, expectedFinishedCommand)
 }
+
+func TestCreateLinPeas(t *testing.T) {
+	sessionMock := new(mocks.BaseSession)
+	linPeas := action.CreateLinPeas(sessionMock)
+	assert.NotNil(t, linPeas)
+}
