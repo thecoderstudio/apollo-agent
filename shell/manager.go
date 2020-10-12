@@ -1,6 +1,8 @@
 package shell
 
 import (
+	"errors"
+
 	"github.com/dustin/go-broadcast"
 
 	"github.com/thecoderstudio/apollo-agent/action"
@@ -55,21 +57,13 @@ func (manager Manager) ExecutePredefinedCommand(command websocket.Command) {
 func (manager Manager) executeAction(command websocket.Command) {
 	session := manager.GetSession(command.ConnectionID)
 	if session == nil {
-		manager.out <- websocket.ShellIO{
-			ConnectionID: command.ConnectionID,
-			Message:      "PTYSession not found",
-		}
-
+		manager.writeError(command.ConnectionID, errors.New("PTYSession not found"))
 	}
 
 	out, err := manager.actionExecutor.Execute(session, command)
 	if err != nil {
 		logging.Critical(err)
-		logging.Critical(err.Error())
-		manager.out <- websocket.ShellIO{
-			ConnectionID: command.ConnectionID,
-			Message:      err.Error(),
-		}
+		manager.writeError(command.ConnectionID, err)
 		return
 	}
 
