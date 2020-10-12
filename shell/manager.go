@@ -87,21 +87,6 @@ func (manager Manager) Execute(shellIO websocket.ShellIO) error {
 	return nil
 }
 
-// GetSession returns the session for the given ID or nil if no such
-// session exists.
-func (manager Manager) GetSession(sessionID string) *pty.Session {
-	return manager.sessions[sessionID]
-}
-
-func (manager Manager) removeSession(sessionID string) {
-	session := manager.GetSession(sessionID)
-	if session == nil {
-		return
-	}
-	session.Close()
-	delete(manager.sessions, sessionID)
-}
-
 // CreateNewSession creates a new PTY session for the given ID,
 // overwriting the existing session for this ID if present.
 func (manager Manager) CreateNewSession(sessionID string) (*pty.Session, error) {
@@ -117,6 +102,21 @@ func (manager Manager) CreateNewSession(sessionID string) (*pty.Session, error) 
 	out := session.Out()
 	go manager.writeIO(*out)
 	return session, err
+}
+
+// GetSession returns the session for the given ID or nil if no such
+// session exists.
+func (manager Manager) GetSession(sessionID string) *pty.Session {
+	return manager.sessions[sessionID]
+}
+
+func (manager Manager) removeSession(sessionID string) {
+	session := manager.GetSession(sessionID)
+	if session == nil {
+		return
+	}
+	session.Close()
+	delete(manager.sessions, sessionID)
 }
 
 func (manager *Manager) writeError(sessionID string, err error) {
