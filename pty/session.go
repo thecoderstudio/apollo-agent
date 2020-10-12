@@ -10,6 +10,8 @@ import (
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
+const messageBufferLength = 512
+
 // BaseSession allows communcation with a PTY session.
 type BaseSession interface {
 	SessionID() string
@@ -79,7 +81,7 @@ func (ptySession *Session) listen(session *os.File) {
 			ptySession.closeSession()
 			return
 		default:
-			buf := make([]byte, 512)
+			buf := make([]byte, messageBufferLength)
 			reader.Read(buf)
 
 			outComm := websocket.ShellIO{
@@ -105,7 +107,7 @@ func (ptySession *Session) closeSession() {
 
 // CreateSession creates a new Session injected with the given sessionID, the given shell and defaults.
 func CreateSession(sessionID, shell string) (*Session, error) {
-	out := broadcast.NewBroadcaster(512)
+	out := broadcast.NewBroadcaster(messageBufferLength)
 	done := make(chan bool)
 	ptySession := Session{
 		sessionID: sessionID,
