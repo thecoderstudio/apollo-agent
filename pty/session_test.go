@@ -31,7 +31,6 @@ func TestExecuteEmptyCommand(t *testing.T) {
 	pty, _ := pty.CreateSession("test", "/bin/bash")
 	broadcaster := *pty.Out()
 	broadcaster.Register(outChan)
-	defer close(outChan)
 	defer pty.Close()
 
 	pty.Execute("")
