@@ -1,6 +1,7 @@
 package shell_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -93,7 +94,15 @@ func TestManagerExecute(t *testing.T) {
 		ConnectionID: "test",
 		Message:      "echo 1",
 	})
-	first := <-manager.Out()
+	firstMessage := ""
+	// Depending on the test environment there may be garbage before the initial echo.
+	for {
+		first := <-manager.Out()
+		firstMessage = firstMessage + first.(websocket.ShellIO).Message
+		if strings.Contains(firstMessage, "echo 1") {
+			break
+		}
+	}
 
 	manager.Execute(websocket.ShellIO{
 		ConnectionID: "test",
@@ -101,7 +110,6 @@ func TestManagerExecute(t *testing.T) {
 	})
 	second := <-manager.Out()
 
-	assert.Contains(t, first.(websocket.ShellIO).Message, "echo 1")
 	assert.Contains(t, second.(websocket.ShellIO).Message, "echo 2")
 
 	manager.Close()

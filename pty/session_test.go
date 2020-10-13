@@ -1,6 +1,7 @@
 package pty_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,12 +51,19 @@ func TestExecute(t *testing.T) {
 
 			broadcaster := *pty.Out()
 			broadcaster.Register(outChan)
-			output := <-outChan
-			assert.Contains(t, output.(websocket.ShellIO).Message, "echo 1")
 			assert.NotNil(t, pty.Session())
 
+			message := ""
+			for {
+				output := <-outChan
+				message = message + output.(websocket.ShellIO).Message
+				if strings.Contains(message, "echo 1") {
+					break
+				}
+			}
+
 			pty.Execute("echo 2")
-			output = <-outChan
+			output := <-outChan
 			assert.Contains(t, output.(websocket.ShellIO).Message, "echo 2")
 		})
 	}
