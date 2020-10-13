@@ -1,5 +1,9 @@
 package websocket
 
+// Message is an interface for messages to be transfered with the websocket client.
+type Message interface {
+}
+
 // ShellIO is used for communicating shell input, output and error streams.
 type ShellIO struct {
 	ConnectionID string `json:"connection_id"`
