@@ -49,6 +49,7 @@ func TestExecuteLinPeas(t *testing.T) {
 
 	finishedCommand := <-*out
 
+	sessionMock.AssertExpectations(t)
 	assert.Equal(t, finishedCommand, expectedFinishedCommand)
 	assert.Nil(t, err)
 }

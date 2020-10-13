@@ -51,6 +51,7 @@ func TestWaitForCompletion(t *testing.T) {
 
 	finishedCommand := <-out
 	assert.Equal(t, finishedCommand, expectedFinishedCommand)
+	sessionMock.AssertExpectations(t)
 }
 
 func TestCreateCommandObserver(t *testing.T) {
