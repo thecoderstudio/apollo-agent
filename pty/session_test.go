@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/thecoderstudio/apollo-agent/pty"
+	"github.com/thecoderstudio/apollo-agent/testutil"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
@@ -50,12 +51,17 @@ func TestExecute(t *testing.T) {
 
 			broadcaster := *pty.Out()
 			broadcaster.Register(outChan)
-			output := <-outChan
-			assert.Contains(t, output.(websocket.ShellIO).Message, "echo 1")
 			assert.NotNil(t, pty.Session())
 
+			// Depending on the test environment there may be garbage before the initial echo.
+			testutil.BlockUntilContains(
+				outChan,
+				func(output interface{}) string { return output.(websocket.ShellIO).Message },
+				"echo 1",
+			)
+
 			pty.Execute("echo 2")
-			output = <-outChan
+			output := <-outChan
 			assert.Contains(t, output.(websocket.ShellIO).Message, "echo 2")
 		})
 	}

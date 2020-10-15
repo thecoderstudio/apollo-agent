@@ -51,6 +51,7 @@ func TestRun(t *testing.T) {
 
 	finishedCommand := <-out
 	assert.Equal(t, finishedCommand, expectedFinishedCommand)
+	sessionMock.AssertExpectations(t)
 }
 
 func TestCreateLinPeas(t *testing.T) {

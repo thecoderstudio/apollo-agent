@@ -3,12 +3,14 @@ package shell_test
 import (
 	"testing"
 
+	"github.com/eapache/channels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/thecoderstudio/apollo-agent/action"
 	"github.com/thecoderstudio/apollo-agent/mocks"
 	"github.com/thecoderstudio/apollo-agent/shell"
+	"github.com/thecoderstudio/apollo-agent/testutil"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
@@ -91,18 +93,25 @@ func TestManagerExecute(t *testing.T) {
 
 	manager.Execute(websocket.ShellIO{
 		ConnectionID: "test",
-		Message:      "echo 1",
+		Message:      "echo 1\n",
 	})
-	first := <-manager.Out()
+
+	// Depending on the test environment there may be garbage before the initial echo.
+	testutil.BlockUntilContains(
+		channels.Wrap(manager.Out()).Out(),
+		func(output interface{}) string { return output.(websocket.ShellIO).Message },
+		"echo 1",
+	)
 
 	manager.Execute(websocket.ShellIO{
 		ConnectionID: "test",
-		Message:      "echo 2",
+		Message:      "echo 2\n",
 	})
-	second := <-manager.Out()
-
-	assert.Contains(t, first.(websocket.ShellIO).Message, "echo 1")
-	assert.Contains(t, second.(websocket.ShellIO).Message, "echo 2")
+	testutil.BlockUntilContains(
+		channels.Wrap(manager.Out()).Out(),
+		func(output interface{}) string { return output.(websocket.ShellIO).Message },
+		"echo 2",
+	)
 
 	manager.Close()
 }
