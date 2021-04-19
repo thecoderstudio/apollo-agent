@@ -7,6 +7,7 @@ import (
 
 	"github.com/dustin/go-broadcast"
 
+	"github.com/thecoderstudio/apollo-agent/logging"
 	"github.com/thecoderstudio/apollo-agent/websocket"
 )
 
@@ -60,6 +61,7 @@ func (ptySession *Session) Execute(toBeExecuted string) error {
 		return err
 	}
 
+	logging.Info(toBeExecuted)
 	_, err = ptySession.session.Write([]byte(toBeExecuted))
 	return err
 }

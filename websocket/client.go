@@ -145,6 +145,7 @@ func (client *Client) awaitMessages(connection *Connection, done, doneListening 
 				return
 			}
 
+			logging.Info(rawMessage)
 			client.sendOverChannels([]byte(rawMessage))
 		}
 	}
